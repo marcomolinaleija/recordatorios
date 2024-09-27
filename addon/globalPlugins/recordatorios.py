@@ -16,8 +16,10 @@ import ui
 import gui
 import globalPluginHandler
 import scriptHandler
-from nvwave import playWaveFile
+import config
 import globalVars
+from gui import settingsDialogs
+from nvwave import playWaveFile
 
 class ReminderManager:
 	"""
@@ -125,23 +127,21 @@ class ReminderManager:
 			message (str): el mensaje que se mostrará al usuario
 			sound_file (str): Ruta al sonido personalizado, si se seleccionó
 		"""
-		
-		if sound_file and os.path.exists(sound_file):
-			# Reproducir el sonido personalizado usando alguna librería de sonido
-			ui.message(f"Recordatorio: {message}")
-			playWaveFile(sound_file)
-			time.sleep(10)
-			ui.message(f"Recordatorio: {message}")
-			playWaveFile(sound_file)
-		else:
-			# Reproducir sonido para la notificación
-			tones.beep(440, 500)
-			# muestra el mensaje del recordatorio
-			ui.message(f"Recordatorio: {message}")
-			time.sleep(10)
-			tones.beep(440, 500)
-			ui.message(f"Recordatorio: {message}")
+		self.interval = int(config.conf["remindersConfig"]["notificationInterval"])
+		num_times = int(config.conf["remindersConfig"]["numberOfTimesToNotifyReminder"])
 
+		for i in range(num_times):
+			if sound_file and os.path.exists(sound_file):
+				# Reproducir el sonido personalizado usando nvwave
+				ui.message(f"Recordatorio: {message}")
+				playWaveFile(sound_file)
+			else:
+				# Reproducir sonido para la notificación
+				tones.beep(440, 500)
+				ui.message(f"Recordatorio: {message}")
+			# Evitar notificaciones simultáneas
+			if i < num_times - 1:
+				time.sleep(self.interval)
 	def stop(self):
 		"""
 		Método que detiene el hilo de  verificación de los recordatorios
@@ -185,7 +185,7 @@ class ReminderApp(wx.Frame):
 		super(ReminderApp, self).__init__(*args, **kw)
 		
 		# Configuramos el título de la ventana y el tamaño de la misma
-		self.SetTitle("Recordatorios")
+		self.SetTitle("Añadir recordatorio")
 		self.SetSize((400, 400))
 		# Variables para el sonido personalizado
 		self.sound_folder = None
@@ -407,10 +407,19 @@ class ReminderApp(wx.Frame):
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 	def __init__(self):
 		super().__init__()
-
-
-		# Añadir el submenú de recordatorios al menú de herramientas de NVDA.
+		config.conf.spec['remindersConfig'] = {
+			"numberOfTimesToNotifyReminder": "integer(default=1)",
+			"notificationInterval": "integer(default=10)"
+		}
+		settingsDialogs.NVDASettingsDialog.categoryClasses.append(remindersConfigPanel)
 		self.add_to_tools_menu()
+
+	def terminate(self, *args, **kwargs):
+		super().terminate(*args, **kwargs)
+		settingsDialogs.NVDASettingsDialog.categoryClasses.remove(remindersConfigPanel)
+
+
+
 
 	def add_to_tools_menu(self):
 		"""
@@ -477,8 +486,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			reminder_messages = [message for message, _, _, _ in reminder_manager.reminders]
 			
 			# Crear un diálogo de selección única con los recordatorios activos.
-			dlg = wx.SingleChoiceDialog(None, "Selecciona el recordatorio que deseas eliminar:",
-										"Eliminar Recordatorio", reminder_messages)
+			dlg = wx.SingleChoiceDialog(None, "Selecciona el recordatorio que deseas eliminar:", "Eliminar Recordatorio", reminder_messages)
 			
 			if dlg.ShowModal() == wx.ID_OK:
 				# Obtener el índice del recordatorio seleccionado.
@@ -493,6 +501,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			dlg.Destroy()
 		else:
 			ui.message("No hay recordatorios para eliminar.")
+
 
 
 	@scriptHandler.script(
@@ -527,3 +536,18 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
 # Instanciar el gestor de recordatorios
 reminder_manager = ReminderManager()
+
+class remindersConfigPanel(settingsDialogs.SettingsPanel):
+	title="Configuración de recordatorios"
+	def makeSettings(self, sizer):
+		helper = gui.guiHelper.BoxSizerHelper(self, sizer=sizer)
+		self.numberOfTimesToNotifyReminder_label = helper.addItem(wx.StaticText(self, label="Selecciona el número de notificaciones que llegarán para el recordatorio."))
+		self.numberOfTimesToNotifyReminder = helper.addItem(wx.ComboBox(self, choices=["1", "2", "3", "4"], style=wx.CB_READONLY))
+		self.numberOfTimesToNotifyReminder.SetStringSelection(str(config.conf["remindersConfig"]["numberOfTimesToNotifyReminder"]))
+		self.notificationInterval_label = helper.addItem(wx.StaticText(self, label="Selecciona el intervalo de tiempo para las notificaciones (en segundos)."))
+		self.notificationInterval = helper.addItem(wx.ComboBox(self, choices=["5", "10", "20"], style=wx.CB_READONLY))
+		self.notificationInterval.SetStringSelection(str(config.conf["remindersConfig"]["notificationInterval"]))
+
+	def onSave(self):
+		config.conf["remindersConfig"]["numberOfTimesToNotifyReminder"] = int(self.numberOfTimesToNotifyReminder.GetStringSelection())
+		config.conf["remindersConfig"]["notificationInterval"] = int(self.notificationInterval.GetStringSelection())
