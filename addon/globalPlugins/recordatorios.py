@@ -15,6 +15,8 @@ import tones
 import ui
 import gui
 import globalPluginHandler
+import addonHandler
+addonHandler.initTranslation()
 import scriptHandler
 import config
 import globalVars
@@ -50,13 +52,14 @@ class ReminderManager:
 			recurrence (str): La frecuencia del recordatorio. diario, semanal, mensual, si aplica.
 			sound_file (str): ruta con el sonido para el recordatorio
 		"""
-		# iteramos sobre la lista de recordatorios utilizando existing_message como iterador
-		for existing_message, _, _ , _, in self.reminders:
-			# si existing_message convertido todos sus caracteres a minúsculas es igual a message, también convertidos sus caracteres a minúsculas:
-			if existing_message.lower() == message.lower():
-				# Notifica al usuario mediante ui.message
-				ui.message(f"Ya existe un recordatorio con el nombre '{message}'.")
-				return
+		
+		# Convertimos el mensaje a minúsculas para la comparación
+		message_lower = message.lower()
+		# Verificamos si ya existe un recordatorio con el mismo nombre
+		if any(existing_message.lower() == message_lower for existing_message, *_ in self.reminders):
+			ui.message(_(f"Ya existe un recordatorio con el nombre '{message}'."))
+			return
+
 		# en caso contrario, se añade el recordatorio y se notifica mediante ui.message
 		self.reminders.append((message, reminder_time, recurrence, sound_file))
 		ui.message(f"Recordatorio agregado para {reminder_time.strftime('%H:%M')}")
@@ -127,21 +130,27 @@ class ReminderManager:
 			message (str): el mensaje que se mostrará al usuario
 			sound_file (str): Ruta al sonido personalizado, si se seleccionó
 		"""
+		# Obtenemos el valor de notificationInterval como entero desde remindersConfig
 		self.interval = int(config.conf["remindersConfig"]["notificationInterval"])
+		# Ahora obtenemos el número de veces que se reproducirá la notificación del recordatorio
 		num_times = int(config.conf["remindersConfig"]["numberOfTimesToNotifyReminder"])
 
+		# bucle que toma como rango el número de notificaciones
 		for i in range(num_times):
+			# si hay un sonido seleccionado para el recordatorio y si el archivo existe, continúa con el bloque de instrucciones.
 			if sound_file and os.path.exists(sound_file):
 				# Reproducir el sonido personalizado usando nvwave
-				ui.message(f"Recordatorio: {message}")
+				ui.message(_(f"Recordatorio: {message}"))
 				playWaveFile(sound_file)
+			# Si el sonido no existe o el usuario no seleccionó alguno, entonces reproduce un beep desde el módulo tones de NVDA.
 			else:
 				# Reproducir sonido para la notificación
 				tones.beep(440, 500)
-				ui.message(f"Recordatorio: {message}")
+				ui.message(_(f"Recordatorio: {message}"))
 			# Evitar notificaciones simultáneas
 			if i < num_times - 1:
 				time.sleep(self.interval)
+
 	def stop(self):
 		"""
 		Método que detiene el hilo de  verificación de los recordatorios
@@ -185,7 +194,7 @@ class ReminderApp(wx.Frame):
 		super(ReminderApp, self).__init__(*args, **kw)
 		
 		# Configuramos el título de la ventana y el tamaño de la misma
-		self.SetTitle("Añadir recordatorio")
+		self.SetTitle(_("Añadir recordatorio"))
 		self.SetSize((400, 400))
 		# Variables para el sonido personalizado
 		self.sound_folder = None
@@ -194,10 +203,13 @@ class ReminderApp(wx.Frame):
 
 		# Creamos el panel que contendrá los elementos de la interfaz
 		self.panel = wx.Panel(self)
+		# Llamado al método para crear la interfaz.
 		self.create_interface()
+		# Configuración de los atajos con accelerators
 		self.setup_accelerators()
 
 		self.reminder_manager = reminder_manager
+		# evento para salir de la interfaz.
 		self.Bind(wx.EVT_CLOSE, self.close)
 
 
@@ -205,7 +217,9 @@ class ReminderApp(wx.Frame):
 		self.load_sound_config()
 
 	def save_sound_config(self):
-		"""Guarda la carpeta de sonidos y el archivo seleccionado en el JSON."""
+		"""
+		Guarda la carpeta de sonidos y el archivo seleccionado en el JSON.
+		"""
 		config_path = os.path.join(globalVars.appArgs.configPath, "sonidos_recordatorios.json")
 		with open(config_path, 'w') as file:
 			config_data = {
@@ -215,7 +229,9 @@ class ReminderApp(wx.Frame):
 			json.dump(config_data, file)
 
 	def load_sound_config(self):
-		"""Carga la configuración de sonidos (carpeta y archivo) desde el JSON."""
+		"""
+		Carga la configuración de sonidos (carpeta y archivo) desde el JSON.
+		"""
 		config_path = os.path.join(globalVars.appArgs.configPath, "sonidos_recordatorios.json")
 		if os.path.exists(config_path):
 			with open(config_path, 'r') as file:
@@ -236,65 +252,93 @@ class ReminderApp(wx.Frame):
 					self.save_sound_config()
 
 	def create_interface(self):
+		"""
+		Método que contiene todos los elementos para la interfaz.
+		"""
+		# Creamos el sizer, vertical.
 		sizer = wx.BoxSizer(wx.VERTICAL)
-
-		message_label = wx.StaticText(self.panel, label="&Mensaje del Recordatorio:")
+		# Etiqueta y cuadro para el mensaje del recordatorio
+		#Translators: Etiqueta que indica al usuario que escriba el mensaje para el recordatorio, mensaje a ser mostrado en la notificación.
+		message_label = wx.StaticText(self.panel, label=_("&Mensaje del Recordatorio:"))
 		sizer.Add(message_label, 0, wx.ALL | wx.EXPAND, 5)
 
 		self.message_field = wx.TextCtrl(self.panel)
 		sizer.Add(self.message_field, 0, wx.ALL | wx.EXPAND, 5)
 
-		hours_label = wx.StaticText(self.panel, label="&Hora (formato 24h):")
+		# Etiqueta y ComboBox para seleccionar la hora del recordatorio.
+		#Translators: Etiqueta para indicar al usuario la selección de la hora, entre 00-24
+		hours_label = wx.StaticText(self.panel, label=_("&Hora (formato 24h):"))
 		sizer.Add(hours_label, 0, wx.ALL | wx.EXPAND, 5)
-
 		self.hours_field = wx.ComboBox(self.panel, choices=[str(i).zfill(2) for i in range(24)], style=wx.CB_DROPDOWN)
 		sizer.Add(self.hours_field, 0, wx.ALL | wx.EXPAND, 5)
+		#self.hours_field.SetSelection(0)
 
+		# Etiqueta y ComboBox para la selección de los minutos
+		#Translators: Etiqueta para indicar al usuario que seleccione un minutos, entre 00-59
 		minutes_label = wx.StaticText(self.panel, label="&Minutos:")
 		sizer.Add(minutes_label, 0, wx.ALL | wx.EXPAND, 5)
-
 		self.minutes_field = wx.ComboBox(self.panel, choices=[str(i).zfill(2) for i in range(60)], style=wx.CB_DROPDOWN)
 		sizer.Add(self.minutes_field, 0, wx.ALL | wx.EXPAND, 5)
+		#self.minutes_field.SetSelection(0)
 
-		self.recurrence_check = wx.CheckBox(self.panel, label="&Recordatorio recurrente")
+		# Etiqueta y casilla de verificación preguntando si el recordatorio será recurrente.
+		#Translators: Casilla que pregunta al usuario si el recordatorio será recurrente.
+		self.recurrence_check = wx.CheckBox(self.panel, label=_("&¿Recordatorio recurrente?"))
 		sizer.Add(self.recurrence_check, 0, wx.ALL | wx.EXPAND, 5)
 		self.recurrence_check.Bind(wx.EVT_CHECKBOX, self.toggle_recurrence)
 
 		# Etiqueta y ComboBox para seleccionar la recurrencia
-		recurrence_label = wx.StaticText(self.panel, label="Selecciona la frecuencia con la que llegará el recordatorio.")
-		sizer.Add(recurrence_label, 0, wx.ALL | wx.EXPAND, 5)
-		recurrence_label.Hide()
-		self.recurrence_choice = wx.ComboBox(self.panel, choices=["diario", "semanal", "mensual"], style=wx.CB_READONLY)
+		#Translators: Etiqueta que solicita al usuario seleccionar la recurrencia del recordatorio.
+		self.recurrence_label = wx.StaticText(self.panel, label=_("Selecciona la frecuencia con la que llegará el recordatorio."))
+		sizer.Add(self.recurrence_label, 0, wx.ALL | wx.EXPAND, 5)
+		# Ocultada por defecto
+		self.recurrence_label.Hide()
+		self.recurrence_choice = wx.ComboBox(self.panel, choices=[_("diario"), _("semanal"), _("mensual")], style=wx.CB_READONLY)
 		sizer.Add(self.recurrence_choice, 0, wx.ALL | wx.EXPAND, 5)
+		# Seleccionamos por defecto diario como recurrencia.
 		self.recurrence_choice.SetSelection(0)
+		# Ocultamos el ComboBox por defecto.
 		self.recurrence_choice.Hide()
+
 		# Checkbox para habilitar sonido personalizado
-		self.custom_sound_check = wx.CheckBox(self.panel, label="&Usar sonido personalizado")
+		#Translators: Etiqueta que pregunta al usuario si desea utilizar un sonido personalizado para el recordatorio.
+		self.custom_sound_check = wx.CheckBox(self.panel, label=_("&¿Usar sonido personalizado?"))
 		sizer.Add(self.custom_sound_check, 0, wx.ALL | wx.EXPAND, 5)
+		# enlasar evento a la casilla.
 		self.custom_sound_check.Bind(wx.EVT_CHECKBOX, self.toggle_custom_sound)
-		# ComboBox para mostrar los sonidos en la carpeta seleccionada
-		select_sound_label = wx.StaticText(self.panel, label="Selecciona un sonido de la lista.")
+		# Etiqueta y comboBox para mostrar los sonidos en la carpeta seleccionada
+		#Translators: Etiqueta que solicita al usuario seleccionar un sonido cargado en la lista.
+		select_sound_label = wx.StaticText(self.panel, label=_("Selecciona un sonido de la lista."))
 		sizer.Add(select_sound_label, 0, wx.ALL | wx.EXPAND, 5)
+		# Se oculta por defecto.
 		select_sound_label.Hide()
 		self.sound_choice = wx.ComboBox(self.panel, choices=[], style= wx.CB_READONLY)
 		sizer.Add(self.sound_choice, 0, wx.ALL | wx.EXPAND, 5)
 		self.sound_choice.Hide()
 
-		self.play_button = wx.Button(self.panel, label="Reproducir  ctrl+p")
+		# Botón para reproducir el sonido seleccionado.
+		#Translators: Botón para reproducir el sonido personalizado. se le indica al usuario que utilice la convinación ctrl+p como atajo de teclado.
+		self.play_button = wx.Button(self.panel, label=_("Reproducir  ctrl+p"))
 		sizer.Add(self.play_button, 0, wx.ALL | wx.CENTER, 5)
 		self.play_button.Bind(wx.EVT_BUTTON, self.on_play_sound)
+		# Ocultado por defecto.
 		self.play_button.Hide()
 
 		# Botón para seleccionar carpeta de sonidos
-		self.select_folder_btn = wx.Button(self.panel, label="Seleccionar carpeta de sonidos  ctrl+f")
+		#Translators: Botón para cargar una carpeta de sonidos. Se le indica al usuario que presione ctrl+f como atajo de teclado.
+		self.select_folder_btn = wx.Button(self.panel, label=_("Seleccionar carpeta de sonidos  ctrl+f"))
 		sizer.Add(self.select_folder_btn, 0, wx.ALL | wx.CENTER, 5)
 		self.select_folder_btn.Bind(wx.EVT_BUTTON, self.on_select_folder)
+		# Se oculta por defecto.
 		self.select_folder_btn.Hide()
 
-		add_button = wx.Button(self.panel, label="&Agregar Recordatorio")
+		# Botón para agregar el recordatorio.
+		#Translators: Este botón funciona para guardar el recordatorio.
+		add_button = wx.Button(self.panel, label=_("&Agregar Recordatorio"))
 		sizer.Add(add_button, 0, wx.ALL | wx.CENTER, 5)
-		add_button.Bind(wx.EVT_BUTTON, self.add_reminder)
-
+		add_button.Bind(wx.EVT_BUTTON, self.add_reminder)       
+		# Botón para cancelar y cerrar la interfaz.
+		#Translators: Este botón cancela y cierra la interfaz de recordatorios.
 		cancel_button = wx.Button(self.panel, label="Salir  ctrl+q")
 		sizer.Add(cancel_button, 0, wx.ALL | wx.CENTER, 5)
 		cancel_button.Bind(wx.EVT_BUTTON, self.close)
@@ -302,34 +346,60 @@ class ReminderApp(wx.Frame):
 		self.panel.SetSizer(sizer)
 
 	def toggle_recurrence(self, event):
+		"""
+		Método que alterna la casilla recurrence para mostrar contenido en base a si está marcada o no.
+		"""
+		# Verificamos si la casilla de verificación está marcada.
 		if self.recurrence_check.IsChecked():
+			# Si es así, mostramos los elementos self.recurrence_choice y self.recurrence_label
 			self.recurrence_choice.Show()
-			recurrence_label.Show()
+			self.recurrence_label.Show()
 		else:
+			# en caso contrario, solo los mantenemos ocultos.
 			self.recurrence_choice.Hide()
-			recurrence_label.Hide()
+			self.recurrence_label.Hide()
+		# Actualizamos la interfaz.
 		self.panel.Layout()
 
 	def toggle_custom_sound(self, event):
+		"""
+		al igual que el método anterior, alterna entre mostrar contenido si la casilla está marcada o no.
+		"""
+		# Si la casilla está marcada
 		if self.custom_sound_check.IsChecked():
+			"""
+			Semuestran los siguientes elementos
+			self.select_folder_btn,
+			self.play_button,
+			self.sound_choice,
+			y self.select_sound_label
+			"""
+			
 			self.select_folder_btn.Show()
 			self.play_button.Show()
 			self.sound_choice.Show()
-			select_sound_label.Show()
+			self.select_sound_label.Show()
 		else:
+			# En caso contrario, se mantienen ocultos los elementos.
 			self.select_folder_btn.Hide()
 			self.play_button.Hide()
 			self.sound_choice.Hide()
-			select_sound_label.Hide()
+			self.select_sound_label.Hide()
+		# Actualizamos la interfaz
 		self.panel.Layout()
 
 	def on_select_folder(self, event):
 		"""
-		Permitir al usuario seleccionar una carpeta desde donde cargar los archivos de sonido.
+		Método que permite la selección de la carpeta para los sonidos.
 		"""
-		with wx.DirDialog(self, "Seleccione la carpeta de sonidos", style=wx.DD_DEFAULT_STYLE) as dialog:
+		# Iniciamos el diálogo de selección de carpeta.
+		#Translators: Mensaje que solicita al usuario seleccionar la carpeta de sonidos desde el explorador.
+		with wx.DirDialog(self, _("Seleccione la carpeta de sonidos"), style=wx.DD_DEFAULT_STYLE) as dialog:
+			# Mostramos el diálogo y verificamos si el usuario presionó OK
 			if dialog.ShowModal() == wx.ID_OK:
+				# Obtenemos la carpeta seleccionada y la almacenamos en self.sound_folder
 				self.sound_folder = dialog.GetPath()
+				# llamamos a los métodos para cargar los archivos desde la carpeta y para guardar la selección en el archivo json.
 				self.load_sounds_from_folder()
 				self.save_sound_config()
 
@@ -338,10 +408,19 @@ class ReminderApp(wx.Frame):
 		"""
 		Cargar los archivos de sonido de la carpeta seleccionada en el ComboBox.
 		"""
+		# Si sound_folder tiene contenido.
 		if self.sound_folder:
+			"""
+			añadimos a la lista sounds los archivos que sean .wav.
+			Primero definimos la lista 'sounds' utilizando un iterador 'f' para recorrer la carpeta 'sound_folder'.
+			obtenemos sus archivos con os.listdir, luego con el mismo iterable, hacemos la verificación de si los archivos contienen la extención .wav, utilizando f.endswith(('.wav')).
+			"""
 			sounds = [f for f in os.listdir(self.sound_folder) if f.endswith(('.wav'))]
+			# Añadimos los archivos obtenidos al ComboBox
 			self.sound_choice.SetItems(sounds)
+			#Si la lista sounds tiene contenido
 			if sounds:
+				# Seleccionamos el primer elemento en el ComboBox
 				self.sound_choice.SetSelection(0)
 				# Guardar el primer sonido seleccionado
 				self.selected_sound = os.path.join(self.sound_folder, sounds[0])
@@ -351,14 +430,46 @@ class ReminderApp(wx.Frame):
 		"""
 		Método que reproduce el sonido seleccionado por el usuario en el cuadro convinado
 		"""
+		# Declaramos la variable sound y le asignamos el valor obtenido de self.sound_choice
 		sound = self.sound_choice.GetValue()
+		# Construímos la ruta completa al archivo.
 		sound_path = os.path.join(self.sound_folder, sound)
+		# Reproducimos con playWaveFile
 		playWaveFile(sound_path)
 
 	def add_reminder(self, event):
+		"""
+		Método para añadir el recordatorio.
+		"""
+		# obtenemos los datos ingresados por el usuario.	
 		message = self.message_field.GetValue()
-		hours = int(self.hours_field.GetValue())
-		minutes = int(self.minutes_field.GetValue())
+		# Obtenemos los valores de minutos y horas eliminando espacios al inicio y al final.
+		hours = self.hours_field.GetValue().strip()
+		minutes = self.minutes_field.GetValue().strip()
+		if not message or not hours or not minutes:
+			# Mandamos un mensaje de error.
+			#Translators: Mensaje de error notificando que los campos no pueden quedar sin contenido.
+			wx.MessageBox(_("parece que alguno de los campos está sin contenido. Mensaje, horas y minutos son obligatorios. Por favor, verifica y vuelve a intentar."), _("Error"), wx.ICON_ERROR)
+			# enfocamos el cuadro de mensaje y retornamos.
+			self.message_field.SetFocus()
+			return
+
+		# Validamos que las horas y minutos sean números válidos
+		try:
+			hours = int(hours)
+			minutes = int(minutes)
+		except ValueError:
+			#Translators: Mensaje de error que indica que las horas y minutos deben de ser números enteros válidos.
+			wx.MessageBox(_("Las horas y minutos deben de ser números enteros válidos."), _("Error"), wx.ICON_ERROR)
+			# Enfocamos el cuadro de horas y retornamos.
+			self.hours_field.SetFocus()
+			return
+		# Validar si horas y minutos están dentro del rango.
+		if hours < 0 or hours > 23 or minutes < 0 or minutes > 59:
+			#Translators: Mensaje de error indicando al usuario que las horas y minutos ingresados están fuera del rango.
+			wx.MessageBox(_("Rango no válido. Las horas deben de estar entre 00 y 23, y los minutos entre 00 y 59."), _("Error"), wx.ICON_ERROR)
+			self.hours_field.SetFocus()
+			return
 
 		now = datetime.now()
 		reminder_time = now.replace(hour=hours, minute=minutes, second=0, microsecond=0)
@@ -382,6 +493,10 @@ class ReminderApp(wx.Frame):
 
 #agregar atajos de teclado
 	def setup_accelerators(self):
+		"""
+		Método para la gestión de atajos de teclado adicionales utilizando accelerators.
+		"""
+		
 		#creamos identificadores para los atajos
 		load_folder = wx.NewIdRef()
 		play_file = wx.NewIdRef()
@@ -402,11 +517,15 @@ class ReminderApp(wx.Frame):
 		self.SetAcceleratorTable(accel_tbl)
 
 	def close(self, event):
+		"""
+		Método para cerrar la interfaz.
+		"""
 		self.Destroy()
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 	def __init__(self):
 		super().__init__()
+		# Diccionario con las configuraciones.
 		config.conf.spec['remindersConfig'] = {
 			"numberOfTimesToNotifyReminder": "integer(default=1)",
 			"notificationInterval": "integer(default=10)"
@@ -435,8 +554,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		remindersSubMenu = wx.Menu()
 
 		# Crear los ítems del submenú.
+		#Translators: Item de menú que permite abrir la interfaz para añadir un nuevo recordatorio
 		addReminderMenuItem = wx.MenuItem(remindersSubMenu, wx.ID_ANY, _("Añadir Recordatorio"))
+		#Translators: Item de menú que permite mirar los recordatorios activos.
 		viewRemindersMenuItem = wx.MenuItem(remindersSubMenu, wx.ID_ANY, _("Ver Recordatorios Activos"))
+		#Translators: Item de menú que permite eliminar un recordatorio que el usuario seleccione.
 		deleteReminderMenuItem = wx.MenuItem(remindersSubMenu, wx.ID_ANY, _("Eliminar Recordatorio"))
 
 		# Añadir los ítems al submenú.
@@ -445,6 +567,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		remindersSubMenu.Append(deleteReminderMenuItem)
 
 		# Añadir el submenú de Recordatorios al menú de herramientas.
+		#Translators: Título del menú de recordatorios para el menú de herramientas de NVDA.
 		toolsMenu.AppendSubMenu(remindersSubMenu, _("&Recordatorios"))
 
 		# Vincular los eventos de clic a los nuevos ítems.
@@ -470,12 +593,13 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			reminder_list = []
 			for index, (message, reminder_time, recurrence, sound_file) in enumerate(reminder_manager.reminders, start=1):
 				formatted_time = reminder_time.strftime("%H:%M")
-				recurrence_text = f", recurrente {recurrence}" if recurrence else ""
-				reminder_list.append(f"{index}: {message}, programado para las {formatted_time}{recurrence_text}")
+				recurrence_text = _(f", recurrente {recurrence}") if recurrence else ""
+				reminder_list.append(_(f"{index}: {message}, programado para las {formatted_time}{recurrence_text}"))
 			reminders_text = "\n".join(reminder_list)
-			ui.browseableMessage(f"\n{reminders_text}", "Recordatorios activos:")
+			ui.browseableMessage(f"\n{reminders_text}", _("Recordatorios activos:"))
 		else:
-			ui.message("No hay recordatorios activos.")
+			#Translators: Mensaje que indica al usuario que no hay recordatorios activos.
+			ui.message(_("No hay recordatorios activos."))
 
 	def delete_reminder(self, event):
 		"""
@@ -497,10 +621,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 				reminder_manager.save_reminders()
 				
 				# Notificar al usuario que el recordatorio fue eliminado.
-				gui.messageBox(f"Recordatorio '{removed_reminder[0]}' eliminado.", "Información")
+				wx.MessageBox(f"Recordatorio '{removed_reminder[0]}' eliminado.", "Información", wx.ICON_INFORMATION)
 			dlg.Destroy()
 		else:
-			ui.message("No hay recordatorios para eliminar.")
+			ui.message(_("No hay recordatorios para eliminar."))
 
 
 
@@ -532,7 +656,17 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			reminders_text = "\n".join(reminder_list)
 			ui.browseableMessage(f"\n{reminders_text}", "Recordatorios activos:")
 		else:
-			ui.message("No hay recordatorios activos.")
+			ui.message(_("No hay recordatorios activos."))
+
+	@scriptHandler.script(
+		description=_("Lansa el diálogo para eliminar rutas"),
+		category=_("Recordatorios"),
+		gesture=None
+	)
+	
+	def script_open_delete_dialog(self, gesture):
+		wx.CallAfter(self.delete_reminder, None)
+
 
 # Instanciar el gestor de recordatorios
 reminder_manager = ReminderManager()
@@ -542,12 +676,13 @@ class remindersConfigPanel(settingsDialogs.SettingsPanel):
 	def makeSettings(self, sizer):
 		helper = gui.guiHelper.BoxSizerHelper(self, sizer=sizer)
 		self.numberOfTimesToNotifyReminder_label = helper.addItem(wx.StaticText(self, label="Selecciona el número de notificaciones que llegarán para el recordatorio."))
-		self.numberOfTimesToNotifyReminder = helper.addItem(wx.ComboBox(self, choices=["1", "2", "3", "4"], style=wx.CB_READONLY))
+		self.numberOfTimesToNotifyReminder = helper.addItem(wx.ComboBox(self, choices=["1", "2", "3", _("4")], style=wx.CB_READONLY))
 		self.numberOfTimesToNotifyReminder.SetStringSelection(str(config.conf["remindersConfig"]["numberOfTimesToNotifyReminder"]))
 		self.notificationInterval_label = helper.addItem(wx.StaticText(self, label="Selecciona el intervalo de tiempo para las notificaciones (en segundos)."))
-		self.notificationInterval = helper.addItem(wx.ComboBox(self, choices=["5", "10", "20"], style=wx.CB_READONLY))
+		self.notificationInterval = helper.addItem(wx.ComboBox(self, choices=["5", "10", _("20")], style=wx.CB_READONLY))
 		self.notificationInterval.SetStringSelection(str(config.conf["remindersConfig"]["notificationInterval"]))
 
 	def onSave(self):
 		config.conf["remindersConfig"]["numberOfTimesToNotifyReminder"] = int(self.numberOfTimesToNotifyReminder.GetStringSelection())
 		config.conf["remindersConfig"]["notificationInterval"] = int(self.notificationInterval.GetStringSelection())
+
