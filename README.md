@@ -4,7 +4,7 @@ Este complemento permite al usuario añadir recordatorios de manera sencilla, no
 
 ## Uso del complemento
 
-El complemento incluye dos gestos sin asignar en los gestos de entrada de NVDA, bajo la categoría "Recordatorios":
+El complemento incluye 3 gestos sin asignar en los gestos de entrada de NVDA, bajo la categoría "Recordatorios":
 
 ### 1. Abrir la ventana para añadir un recordatorio
 
@@ -12,7 +12,7 @@ Esta opción te permitirá añadir uno o más recordatorios. Al abrir la ventana
 
 - **Configuración del recordatorio**: 
   - Después de escribir tu mensaje, encontrarás dos cuadros combinados. El primero te permitirá seleccionar la hora en formato de 24 horas, y el segundo, los minutos. Puedes modificar estos valores según tus necesidades.
-  - También hay dos casillas de verificación, que están desmarcadas por defecto. La primera pregunta si el recordatorio será recurrente. Al activarla, aparecerá un cuadro combinado donde podrás seleccionar la frecuencia: diaria, semanal o mensual.
+  - También hay 2 casillas de verificación, que están desmarcadas por defecto. La primera pregunta si el recordatorio será recurrente. Al activarla, aparecerá un cuadro combinado donde podrás seleccionar la frecuencia: diaria, semanal, mensual o personalizada.
   - La segunda casilla, que también está desmarcada por defecto, te preguntará si deseas añadir un sonido personalizado para el recordatorio. Al marcarla, se mostrarán más opciones.
 
 - **Sonidos personalizados**: 
@@ -25,6 +25,11 @@ Una vez que hayas configurado todos los elementos de acuerdo a tus preferencias,
 ### 2. Verificar recordatorios activos
 
 Esta opción te permitirá revisar los recordatorios que has configurado. Al seleccionar esta opción, se abrirá una ventana explorable donde podrás desplazarte con las flechas para revisar los recordatorios junto con su hora programada.
+
+
+### 3. Lansar el diálogo para eliminar recordatorios
+
+Esto abrirá un diálogo de selección para que elimines un recordatorio
 
 ## Menú herramientas de NVDA
 
@@ -51,6 +56,8 @@ Si deseas hacer alguna sugerencia para el complemento, puedes enviar un correo a
 [correo electrónico](mailto:marcomolinaleija@hotmail.com)
 
 # Historial de versiones
+
+- **Versión 1.1**: Se añade la posibilidad de poder personalizar la recurrencia de los recordatorios (En minutos)
 
 - **Versión 1.0**: Versión inicial del complemento, que contiene todas las opciones descritas anteriormente.
 
