@@ -2,7 +2,7 @@
 
 # Este archivo está cubierto por la Licencia Pública General de GNU.
 # Última actualización 2024
-# Derechos de autor (C) 2024 Marco Leija <marcomolinaleija@hotmail.com>
+# Derechos de autor (C) 2024 Marco Leija <marcoleija@marco-ml.com>
 
 import addonHandler
 
@@ -18,12 +18,12 @@ class donate:
         import gui
         
         # Translators: The title of the dialog requesting donations from users.
-        title ="Por favor, dona"
+        title =_("Por favor, dona")
         
         # Translators: The text of the donate dialog
-        message = """Recordatorios  - complemento gratuito para NVDA.
+        message = _("""Recordatorios  - complemento gratuito para NVDA.
         Puedes hacer una donación a Marco Leija para ayudar en el desarrollo futuro de este complemento.
-        ¿Quieres hacer una donación ahora? Para la transacción, serás redirigido al sitio web de PayPal."""
+        ¿Quieres hacer una donación ahora? Para la transacción, serás redirigido al sitio web de PayPal.""")
         
         name = addonHandler.getCodeAddon().manifest['summary']
         if gui.messageBox(message.format(name=name), title, style=wx.YES_NO|wx.ICON_QUESTION) == wx.YES:

@@ -27,7 +27,7 @@ Una vez que hayas configurado todos los elementos de acuerdo a tus preferencias,
 Esta opción te permitirá revisar los recordatorios que has configurado. Al seleccionar esta opción, se abrirá una ventana explorable donde podrás desplazarte con las flechas para revisar los recordatorios junto con su hora programada.
 
 
-### 3. Lansar el diálogo para eliminar recordatorios
+### 3. Lanzar el diálogo para eliminar recordatorios
 
 Esto abrirá un diálogo de selección para que elimines un recordatorio
 
