@@ -1,0 +1,320 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the 'recordatorios' package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: 'recordatorios' '1.2'\n"
+"Report-Msgid-Bugs-To: 'nvda-translations@groups.io'\n"
+"POT-Creation-Date: 2025-03-04 21:06-0600\n"
+"PO-Revision-Date: 2025-03-04 22:25-0600\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: pt\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.5\n"
+
+#: addon\globalPlugins\recordatorios.py:61
+msgid "Ya existe un recordatorio con el nombre '{}'"
+msgstr "Já existe um lembrete com o nome '{}'"
+
+#: addon\globalPlugins\recordatorios.py:66
+#, python-brace-format
+msgid "Recordatorio agregado para {time}"
+msgstr "Lembrete adicionado para {time}"
+
+#. si hay un sonido seleccionado para el recordatorio y si el archivo existe, continúa con el bloque de instrucciones.
+#: addon\globalPlugins\recordatorios.py:141
+msgid "Recordatorio: {}"
+msgstr "Lembrete: {}"
+
+#. Configuramos el título de la ventana y el tamaño de la misma
+#: addon\globalPlugins\recordatorios.py:196
+msgid "Añadir recordatorio"
+msgstr "Adicionar lembrete"
+
+#. Etiqueta y cuadro para el mensaje del recordatorio
+#. Translators: Etiqueta que indica al usuario que escriba el mensaje para el recordatorio, mensaje a ser mostrado en la notificación.
+#: addon\globalPlugins\recordatorios.py:259
+msgid "&Mensaje del Recordatorio:"
+msgstr "&Mensagem do Lembrete:"
+
+#. Etiqueta y ComboBox para seleccionar la hora del recordatorio.
+#. Translators: Etiqueta para indicar al usuario la selección de la hora, entre 00-23
+#: addon\globalPlugins\recordatorios.py:267
+msgid "&Hora (formato 24h):"
+msgstr "&Hora (formato 24h):"
+
+#. self.hours_field.SetSelection(0)
+#. Etiqueta y ComboBox para la selección de los minutos
+#. Translators: Etiqueta para indicar al usuario que seleccione un minuto, entre 00-59
+#: addon\globalPlugins\recordatorios.py:275
+msgid "&Minutos:"
+msgstr "&Minutos:"
+
+#. self.minutes_field.SetSelection(0)
+#. Etiqueta y casilla de verificación preguntando si el recordatorio será recurrente.
+#. Translators: Casilla que pregunta al usuario si el recordatorio será recurrente.
+#: addon\globalPlugins\recordatorios.py:283
+msgid "&Recordatorio recurrente"
+msgstr "&Lembrete recorrente"
+
+#. Etiqueta y ComboBox para seleccionar la recurrencia
+#. Translators: Etiqueta que solicita al usuario seleccionar la recurrencia del recordatorio.
+#: addon\globalPlugins\recordatorios.py:289
+msgid "Selecciona la frecuencia con la que llegará el recordatorio."
+msgstr "Selecione a frequência com a qual o lembrete será enviado."
+
+#. Translators: Cuadro convinado con las opciones para la recurrencia del recordatorio.
+#: addon\globalPlugins\recordatorios.py:294
+msgid "diario"
+msgstr "diário"
+
+#: addon\globalPlugins\recordatorios.py:294
+msgid "semanal"
+msgstr "semanal"
+
+#: addon\globalPlugins\recordatorios.py:294
+msgid "mensual"
+msgstr "mensual"
+
+#: addon\globalPlugins\recordatorios.py:294
+#: addon\globalPlugins\recordatorios.py:378
+msgid "Personalizado"
+msgstr "personalizado"
+
+#. Translators: Etiqueta que pregunta al usuario el intervalo para la recurrencia.
+#: addon\globalPlugins\recordatorios.py:302
+msgid "Intervalo de recurrencia personalizada (en minutos):"
+msgstr "Intervalo de recorrência personalizada (em minutos):"
+
+#. Checkbox para habilitar sonido personalizado
+#. Translators: Etiqueta que pregunta al usuario si desea utilizar un sonido personalizado para el recordatorio.
+#: addon\globalPlugins\recordatorios.py:311
+msgid "&Usar sonido personalizado"
+msgstr "&Usar som personalizado"
+
+#. Etiqueta y comboBox para mostrar los sonidos en la carpeta seleccionada
+#. Translators: Etiqueta que solicita al usuario seleccionar un sonido cargado en la lista.
+#: addon\globalPlugins\recordatorios.py:317
+msgid "Selecciona un sonido de la lista."
+msgstr "Selecione um som da lista."
+
+#. Botón para reproducir el sonido seleccionado.
+#. Translators: Botón para reproducir el sonido personalizado. se le indica al usuario que utilice la convinación ctrl+p como atajo de teclado.
+#: addon\globalPlugins\recordatorios.py:327
+msgid "Reproducir  ctrl+p"
+msgstr "Reproducir  ctrl+p"
+
+#. Botón para seleccionar carpeta de sonidos
+#. Translators: Botón para cargar una carpeta de sonidos. Se le indica al usuario que presione ctrl+f como atajo de teclado.
+#: addon\globalPlugins\recordatorios.py:335
+msgid "Seleccionar carpeta de sonidos  ctrl+f"
+msgstr "Selecionar pasta de sons ctrl+f"
+
+#. Botón para agregar el recordatorio.
+#. Translators: Botón para guardar el recordatorio.
+#: addon\globalPlugins\recordatorios.py:343
+msgid "&Agregar Recordatorio"
+msgstr "&adicionar recordatorio"
+
+#. Botón de donación.
+#. Translators: Botón que le indica al usuario que puede realizar una donación.
+#: addon\globalPlugins\recordatorios.py:349
+msgid "&Donar al desarrollador del complemento"
+msgstr "&Doar ao desenvolvedor do complemento"
+
+#. Botón para cancelar y cerrar la interfaz.
+#. Translators: Este botón cancela y cierra la interfaz de recordatorios.
+#: addon\globalPlugins\recordatorios.py:354
+msgid "Salir  ctrl+q"
+msgstr "Sair  ctrl+q"
+
+#. Iniciamos el diálogo de selección de carpeta.
+#. Translators: Mensaje que solicita al usuario seleccionar la carpeta de sonidos desde el explorador.
+#: addon\globalPlugins\recordatorios.py:420
+msgid "Seleccione la carpeta de sonidos"
+msgstr "Selecione a pasta de sons"
+
+#. Translators: Mensaje que indica al usuario que la casilla de sonido personalizado no está marcada.
+#. Translators: Mensaje que indica al usuario que la casilla para el sonido personalizado no está marcada.
+#: addon\globalPlugins\recordatorios.py:430
+#: addon\globalPlugins\recordatorios.py:469
+msgid "La casilla para el sonido personalizado no está marcada."
+msgstr "A caixa para o som personalizado não está marcada."
+
+#. Translators: Mensaje de error que indica que el número para el intervalo debe de ser positivo, y número entero.
+#: addon\globalPlugins\recordatorios.py:484
+msgid "El intervalo personalizado debe ser un número entero positivo."
+msgstr "O intervalo personalizado deve ser um número inteiro positivo."
+
+#: addon\globalPlugins\recordatorios.py:484
+#: addon\globalPlugins\recordatorios.py:494
+#: addon\globalPlugins\recordatorios.py:505
+#: addon\globalPlugins\recordatorios.py:512
+#: addon\globalPlugins\recordatorios.py:689
+#: addon\globalPlugins\recordatorios.py:696
+msgid "Error"
+msgstr "Erro"
+
+#. Mandamos un mensaje de error.
+#. Translators: Mensaje de error notificando que los campos no pueden quedar sin contenido.
+#: addon\globalPlugins\recordatorios.py:494
+msgid ""
+"parece que alguno de los campos está sin contenido. Mensaje, horas y minutos "
+"son obligatorios. Por favor, verifica y vuelve a intentar."
+msgstr ""
+"Parece que algum dos campos está sem conteúdo. Mensagem, horas e minutos são "
+"obrigatórios. Por favor, verifique e tente novamente."
+
+#. Translators: Mensaje de error que indica que las horas y minutos deben de ser números enteros válidos.
+#: addon\globalPlugins\recordatorios.py:505
+msgid "Las horas y minutos deben de ser números enteros válidos."
+msgstr "As horas e minutos devem ser números inteiros válidos."
+
+#. Translators: Mensaje de error indicando al usuario que las horas y minutos ingresados están fuera del rango.
+#: addon\globalPlugins\recordatorios.py:512
+msgid ""
+"Rango no válido. Las horas deben de estar entre 00 y 23, y los minutos entre "
+"00 y 59."
+msgstr ""
+"Intervalo inválido. As horas devem estar entre 00 e 23, e os minutos entre "
+"00 e 59."
+
+#. Crear los ítems del submenú.
+#. Translators: Etiqueta para el item de menú añadir recordatorio.
+#: addon\globalPlugins\recordatorios.py:602
+msgid "Añadir Recordatorio"
+msgstr "Adicionar Lembrete"
+
+#. Translators: Etiqueta para el item de menú ver recordatorios activos.
+#: addon\globalPlugins\recordatorios.py:604
+msgid "Ver Recordatorios Activos"
+msgstr "Ver Lembretes Ativos"
+
+#. Translators: Etiqueta para el item de menú eliminar recordatorio.
+#: addon\globalPlugins\recordatorios.py:606
+#: addon\globalPlugins\recordatorios.py:665
+msgid "Eliminar Recordatorio"
+msgstr "Excluir Lembrete"
+
+#. Añadir el submenú de Recordatorios al menú de herramientas.
+#. Translators: Nombre para el submenú.
+#: addon\globalPlugins\recordatorios.py:615
+msgid "&Recordatorios"
+msgstr "&Lembretes"
+
+#. Translators: título de la ventana para los recordatorios activos.
+#: addon\globalPlugins\recordatorios.py:644
+msgid "Recordatorios activos:"
+msgstr "Lembretes ativos:"
+
+#. Translators: Mensaje que le indica al usuario que no hay recordatorios activos.
+#: addon\globalPlugins\recordatorios.py:647
+msgid "No hay recordatorios activos."
+msgstr "Não há lembretes ativos."
+
+#: addon\globalPlugins\recordatorios.py:664
+msgid "Selecciona el recordatorio que deseas eliminar:"
+msgstr "Selecione o lembrete que você deseja excluir:"
+
+#: addon\globalPlugins\recordatorios.py:682
+msgid ""
+"Recordatorio eliminado:\n"
+"\n"
+"'{}'"
+msgstr "Lembrete excluído: '{}'"
+
+#: addon\globalPlugins\recordatorios.py:683
+msgid "Información"
+msgstr "Informação"
+
+#: addon\globalPlugins\recordatorios.py:688
+msgid "El recordatorio seleccionado ya no existe."
+msgstr "O lembrete selecionado não existe mais."
+
+#: addon\globalPlugins\recordatorios.py:695
+msgid ""
+"Ocurrió un error al intentar eliminar el recordatorio:\n"
+"\n"
+"{}"
+msgstr ""
+"Ocorreu um erro ao tentar excluir o lembrete:\n"
+"{}"
+
+#. Translators: Mensaje que le indica al usuario que no hay recordatorios para poder eliminar.
+#: addon\globalPlugins\recordatorios.py:702
+msgid "No hay recordatorios para eliminar."
+msgstr "Não há lembretes para excluir."
+
+#. Translators: Descripción para el gesto que lanza la ventana de recordatorios.
+#: addon\globalPlugins\recordatorios.py:706
+msgid "Abrir la ventana de recordatorios"
+msgstr "Abrir a janela de lembretes"
+
+#. Translators: Nombre de la categoría.
+#. Add-on summary, usually the user visible name of the addon.
+#. Translators: Summary for this add-on
+#. to be shown on installation and add-on information found in Add-ons Manager.
+#: addon\globalPlugins\recordatorios.py:708
+#: addon\globalPlugins\recordatorios.py:718
+#: addon\globalPlugins\recordatorios.py:729 buildVars.py:23
+msgid "Recordatorios"
+msgstr "Lembretes"
+
+#. Translators: Descripción del gesto para ver recordatorios activos.
+#: addon\globalPlugins\recordatorios.py:716
+msgid "Verificar recordatorios activos"
+msgstr "Verificar lembretes ativos"
+
+#. Translators: Descripción del gesto que lanza la ventana para eliminar recordatorios.
+#: addon\globalPlugins\recordatorios.py:727
+msgid "Lanza el diálogo para eliminar recordatorios"
+msgstr "Lançar o diálogo para excluir lembretes"
+
+#. Translators: Título de la ventana para la configuración del complemento.
+#: addon\globalPlugins\recordatorios.py:740
+msgid "Configuración de recordatorios"
+msgstr "Configuração de lembretes"
+
+#. Translators: Etiqueta que le indica al usuario que debe seleccionar un número para las notificaciones que llegarán.
+#: addon\globalPlugins\recordatorios.py:744
+msgid ""
+"Selecciona el número de notificaciones que llegarán para el recordatorio."
+msgstr "Selecione o número de notificações que serão enviadas para o lembrete."
+
+#. Translators: Etiqueta que solicita al usuario seleccionar (en segundos) el tiempo entre las notificaciones.
+#: addon\globalPlugins\recordatorios.py:748
+msgid ""
+"Selecciona el intervalo de tiempo para las notificaciones (en segundos)."
+msgstr "Selecione o intervalo de tempo para as notificações (em segundos)."
+
+#. Translators: The title of the dialog requesting donations from users.
+#: addon\installTasks.py:21
+msgid "Por favor, dona"
+msgstr "Por favor, faça uma doação."
+
+#. Translators: The text of the donate dialog
+#: addon\installTasks.py:24
+msgid ""
+"Recordatorios  - complemento gratuito para NVDA.\n"
+"        Puedes hacer una donación a Marco Leija para ayudar en el desarrollo "
+"futuro de este complemento.\n"
+"        ¿Quieres hacer una donación ahora? Para la transacción, serás "
+"redirigido al sitio web de PayPal."
+msgstr ""
+"Recordatorios - complemento gratuito para NVDA.\n"
+"Você pode fazer uma doação para Marco Leija para ajudar no desenvolvimento "
+"futuro deste complemento.\n"
+"Você gostaria de fazer uma doação agora? Para a transação, você será "
+"redirecionado para o site do PayPal."
+
+#. Add-on description
+#. Translators: Long description to be shown for this add-on on add-on information from add-ons manager
+#: buildVars.py:26
+msgid "Complemento para crear, mirar y eliminar recordatorios."
+msgstr "Addon para criar, ver e excluir lembretes."

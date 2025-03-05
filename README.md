@@ -57,10 +57,20 @@ Si deseas hacer alguna sugerencia para el complemento, puedes enviar un correo a
 
 # Historial de versiones
 
+- **Versión 1.3**: Traducido el complemento al idioma portugués.
+
+- **Versión 1.2**: Se prepara el complemento para ser lanzado en la tienda de nvda.es
+
 - **Versión 1.1**: Se añade la posibilidad de poder personalizar la recurrencia de los recordatorios (En minutos)
 
 - **Versión 1.0**: Versión inicial del complemento, que contiene todas las opciones descritas anteriormente.
 
 ---
+
+
+
+# Créditos:
+
+- [axel cepeda](mailto:axelcepeda1412@gmail.com), por traducir el complemento al idioma portugués.
 
 Y eso es todo por ahora. Muchas gracias por descargar, instalar y probar este complemento.

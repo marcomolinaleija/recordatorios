@@ -58,12 +58,13 @@ class ReminderManager:
 		message_lower = message.lower()
 		# Verificamos si ya existe un recordatorio con el mismo nombre
 		if any(existing_message.lower() == message_lower for existing_message, *_ in self.reminders):
-			ui.message(_(f"Ya existe un recordatorio con el nombre '{message}'."))
+			ui.message(_("Ya existe un recordatorio con el nombre '{}'").format(message))
 			return
 
 		# en caso contrario, se añade el recordatorio y se notifica mediante ui.message
 		self.reminders.append((message, reminder_time, recurrence, sound_file, custom_interval))
-		ui.message(_(f"Recordatorio agregado para {reminder_time.strftime('%H:%M')}"))
+		translated_message_reminder = _("Recordatorio agregado para {time}")
+		ui.message(translated_message_reminder.format(time=reminder_time.strftime('%H:%M')))
 		# llamamos al método para guardar los recordatorios
 		self.save_reminders()
 
@@ -137,7 +138,7 @@ class ReminderManager:
 		# bucle que toma como rango el número de notificaciones
 		for i in range(num_times):
 			# si hay un sonido seleccionado para el recordatorio y si el archivo existe, continúa con el bloque de instrucciones.
-			ui.message(_(f"Recordatorio: {message}"))
+			ui.message(_("Recordatorio: {}").format(message))
 			if sound_file and os.path.exists(sound_file):
 				# Reproducir el sonido personalizado usando nvwave
 				playWaveFile(sound_file)
@@ -350,7 +351,7 @@ class ReminderApp(wx.Frame):
 		donate_button.Bind(wx.EVT_BUTTON, self.donate)
 		# Botón para cancelar y cerrar la interfaz.
 		#Translators: Este botón cancela y cierra la interfaz de recordatorios.
-		cancel_button = wx.Button(self.panel, label="Salir  ctrl+q")
+		cancel_button = wx.Button(self.panel, label=_("Salir  ctrl+q"))
 		sizer.Add(cancel_button, 0, wx.ALL | wx.CENTER, 5)
 		cancel_button.Bind(wx.EVT_BUTTON, self.close)
 
@@ -678,8 +679,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 						# Notificar al usuario que el recordatorio fue eliminado.
 						#Mensaje y título de ventana que indican al usuario que el recordatorio ha sido eliminado.
 						gui.messageBox(
-							_("Recordatorio eliminado:\n\n") + 
-							f"'{removed_reminder[0]}'", 
+							_("Recordatorio eliminado:\n\n'{}'").format(removed_reminder[0]),
 							_("Información")
 						)
 					else:
@@ -692,8 +692,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 				except Exception as e:
 					#Translators: mensaje y título de ventana que le indican al usuario que ha ocurrido un error al intentar eliminar el recordatorio.
 					gui.messageBox(
-						_("Ocurrió un error al intentar eliminar el recordatorio:\n\n") +
-						str(e), 
+						_("Ocurrió un error al intentar eliminar el recordatorio:\n\n{}").format(str(e)), 
 						_("Error"), 
 						wx.ICON_ERROR
 					)
