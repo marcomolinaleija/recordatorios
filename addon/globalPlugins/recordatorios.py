@@ -5,23 +5,30 @@
 
 
 import wx
+import wx.adv
 import threading
 import time
 import json
 import os
+import addonHandler
+addonHandler.initTranslation()
+
 from datetime import datetime, timedelta
 
 import tones
 import ui
 import gui
 import globalPluginHandler
-import addonHandler
-addonHandler.initTranslation()
 import scriptHandler
 import config
 import globalVars
 from gui import settingsDialogs
 from nvwave import playWaveFile
+# Variables "constantes" para evitar errores
+DELETE_REMINDER_MESSAGE = _("Selecciona el recordatorio que deseas eliminar:")
+DELETE_REMINDER_TITLE = _("Eliminar recordatorio")
+REMINDER_DELETED_MESSAGE = _("El recordatorio '{}' ha sido eliminado.")
+REMINDER_DELETED_TITLE = _("Recordatorio eliminado")
 
 class ReminderManager:
 	"""
@@ -42,7 +49,6 @@ class ReminderManager:
 		verifier_thread = threading.Thread(target=self.check_reminders, daemon=True)
 		# Iniciamos el hilo previamente creado
 		verifier_thread.start()
-
 	def add_reminder(self, message, reminder_time, recurrence=None, sound_file=None, custom_interval=None):
 		"""
 		Método que añade un recordatorio, verificando si no existe otro con el mismo nombre
@@ -53,7 +59,7 @@ class ReminderManager:
 			sound_file (str): ruta con el sonido para el recordatorio
 			custom_interval (int): Tiempo personalizado para la notificación del recordatorio
 		"""
-		
+	
 		# Convertimos el mensaje a minúsculas para la comparación
 		message_lower = message.lower()
 		# Verificamos si ya existe un recordatorio con el mismo nombre
@@ -63,8 +69,21 @@ class ReminderManager:
 
 		# en caso contrario, se añade el recordatorio y se notifica mediante ui.message
 		self.reminders.append((message, reminder_time, recurrence, sound_file, custom_interval))
-		translated_message_reminder = _("Recordatorio agregado para {time}")
-		ui.message(translated_message_reminder.format(time=reminder_time.strftime('%H:%M')))
+	
+		# Verificar si el recordatorio es para hoy o para una fecha futura
+		now = datetime.now()
+		if reminder_time.date() == now.date():
+			# Si es para hoy, mostramos solo la hora
+			translated_message_reminder = _("Recordatorio agregado para {time}")
+			ui.message(translated_message_reminder.format(time=reminder_time.strftime('%H:%M')))
+		else:
+			# Si es para una fecha futura, mostramos fecha y hora
+			translated_message_reminder = _("Recordatorio agregado para el {date} a las {time}")
+			ui.message(translated_message_reminder.format(
+				date=reminder_time.strftime('%d/%m/%Y'),
+				time=reminder_time.strftime('%H:%M')
+			))
+
 		# llamamos al método para guardar los recordatorios
 		self.save_reminders()
 
@@ -191,7 +210,6 @@ class ReminderApp(wx.Frame):
 	
 	def __init__(self, *args, **kw):
 		super(ReminderApp, self).__init__(*args, **kw)
-		
 		# Configuramos el título de la ventana y el tamaño de la misma
 		self.SetTitle(_("Añadir recordatorio"))
 		self.SetSize((400, 400))
@@ -208,6 +226,9 @@ class ReminderApp(wx.Frame):
 		self.reminder_manager = reminder_manager
 		# evento para salir de la interfaz.
 		self.Bind(wx.EVT_CLOSE, self.close)
+		# Inicializar DatePickerCtrl con la fecha actual
+		today = wx.DateTime.Now()
+		self.date_picker.SetValue(today)
 
 
 		# Cargar la configuración de sonidos
@@ -261,7 +282,30 @@ class ReminderApp(wx.Frame):
 
 		self.message_field = wx.TextCtrl(self.panel)
 		sizer.Add(self.message_field, 0, wx.ALL | wx.EXPAND, 5)
+		# Nueva casilla para seleccionar si usar fecha específica
+		#Translators: Casilla que pregunta al usuario si desea usar una fecha específica
+		self.specific_date_check = wx.CheckBox(self.panel, label=_("&Usar fecha específica"))
+		sizer.Add(self.specific_date_check, 0, wx.ALL | wx.EXPAND, 5)
+		self.specific_date_check.Bind(wx.EVT_CHECKBOX, self.toggle_specific_date)
 
+		# Contenedor para selector de fecha
+		#Translators: Etiqueta para el selector de fecha específica
+		self.date_label = wx.StaticText(self.panel, label=_("Selecciona una fecha, utilizando flechas izquierda/derecha para moverse entre día, mes y año, y flechas arriba para modificar los valores:"))
+		sizer.Add(self.date_label, 0, wx.ALL | wx.EXPAND, 5)
+		# Ocultada por defecto
+		self.date_label.Hide()
+	
+		# Usar DatePickerCtrl para seleccionar fecha
+		self.date_picker = wx.adv.DatePickerCtrl(self.panel, style=wx.adv.DP_DROPDOWN | wx.adv.DP_SHOWCENTURY)
+		sizer.Add(self.date_picker, 0, wx.ALL | wx.EXPAND, 5)
+		# Ocultado por defecto
+		self.date_picker.Hide()
+		self.date_picker.Bind(wx.EVT_KEY_DOWN, self.on_date_key)
+		self.date_picker.Bind(wx.adv.EVT_DATE_CHANGED, self.on_date_changed)
+		# Mantener el seguimiento del componente actualmente seleccionado (día, mes, año)
+		self.current_date_component = "día"  # Valores posibles: "día", "mes", "año"
+		# Mantener la fecha anterior para detectar cambios
+		self.previous_date = self.date_picker.GetValue()
 		# Etiqueta y ComboBox para seleccionar la hora del recordatorio.
 		#Translators: Etiqueta para indicar al usuario la selección de la hora, entre 00-23
 		hours_label = wx.StaticText(self.panel, label=_("&Hora (formato 24h):"))
@@ -357,6 +401,18 @@ class ReminderApp(wx.Frame):
 
 		self.panel.SetSizer(sizer)
 
+	def toggle_specific_date(self, event):
+		"""
+		Método que alterna la visibilidad del selector de fecha en función de si está marcada la casilla.
+		"""
+		if self.specific_date_check.IsChecked():
+			self.date_picker.Show()
+			self.date_label.Show()
+		else:
+			self.date_picker.Hide()
+			self.date_label.Hide()
+		self.panel.Layout()
+
 	def toggle_recurrence(self, event):
 		"""
 		Método que alterna la casilla recurrence para mostrar contenido en base a si está marcada o no.
@@ -372,6 +428,66 @@ class ReminderApp(wx.Frame):
 			self.recurrence_label.Hide()
 		# Actualizamos la interfaz.
 		self.panel.Layout()
+
+	def on_date_key(self, event):
+		"""
+		Maneja eventos de teclado en el selector de fecha para proporcionar retroalimentación verbal.
+		"""
+		key_code = event.GetKeyCode()
+		date = self.date_picker.GetValue()
+		
+		# Detectar navegación entre día, mes y año (izquierda/derecha)
+		if key_code == wx.WXK_LEFT:
+			# Mover a la izquierda (por ejemplo, de mes a día)
+			if self.current_date_component == "mes":
+				self.current_date_component = "día"
+				ui.message(_("Día: {}").format(date.GetDay()))
+			elif self.current_date_component == "año":
+				self.current_date_component = "mes"
+				ui.message(_("Mes: {}").format(date.GetMonth() + 1))
+		
+		elif key_code == wx.WXK_RIGHT:
+			# Mover a la derecha (por ejemplo, de día a mes)
+			if self.current_date_component == "día":
+				self.current_date_component = "mes"
+				ui.message(_("Mes: {}").format(date.GetMonth() + 1))
+			elif self.current_date_component == "mes":
+				self.current_date_component = "año"
+				ui.message(_("Año: {}").format(date.GetYear()))
+		
+		# Detectar cambios de valor (arriba/abajo) - el cambio real se manejará en on_date_changed
+		elif key_code in (wx.WXK_UP, wx.WXK_DOWN):
+			# Guardar la fecha actual para compararla después del evento
+			self.previous_date = date
+		
+		# Procesar el evento normalmente
+		event.Skip()
+
+	def on_date_changed(self, event):
+		"""
+		Se llama cuando cambia la fecha, ya sea por teclado o por selección directa.
+		Proporciona retroalimentación verbal sobre el cambio.
+		"""
+		# Obtener la nueva fecha
+		new_date = self.date_picker.GetValue()
+		old_date = self.previous_date
+	
+		# Comprobar qué componente ha cambiado
+		if new_date.GetDay() != old_date.GetDay():
+			ui.message(_("Día: {}").format(new_date.GetDay()))
+			self.current_date_component = "día"
+		elif new_date.GetMonth() != old_date.GetMonth():
+			ui.message(_("Mes: {}").format(new_date.GetMonth() + 1))
+			self.current_date_component = "mes"
+		elif new_date.GetYear() != old_date.GetYear():
+			ui.message(_("Año: {}").format(new_date.GetYear()))
+			self.current_date_component = "año"
+		
+		# Actualizar la fecha anterior
+		self.previous_date = new_date
+		
+		# Procesar el evento normalmente
+		event.Skip()
 
 	def on_recurrence_selection(self, event):
 		selection = self.recurrence_choice.GetStringSelection()
@@ -484,7 +600,7 @@ class ReminderApp(wx.Frame):
 				wx.MessageBox(_("El intervalo personalizado debe ser un número entero positivo."), _("Error"), wx.ICON_ERROR)
 				self.custom_interval_field.SetFocus()
 				return
-				
+			
 		message = self.message_field.GetValue()
 		hours = self.hours_field.GetValue().strip()
 		minutes = self.minutes_field.GetValue().strip()
@@ -514,10 +630,23 @@ class ReminderApp(wx.Frame):
 			return
 
 		now = datetime.now()
-		reminder_time = now.replace(hour=hours, minute=minutes, second=0, microsecond=0)
-
-		if reminder_time < now:
-			reminder_time += timedelta(days=1)
+	
+		if self.specific_date_check.IsChecked():
+			# Obtener la fecha del DatePickerCtrl y convertirla a datetime
+			selected_date = self.date_picker.GetValue()
+			py_date = selected_date.GetYear(), selected_date.GetMonth() + 1, selected_date.GetDay()
+			reminder_time = datetime(py_date[0], py_date[1], py_date[2], hour=hours, minute=minutes, second=0, microsecond=0)
+		
+			# Validar que la fecha no sea en el pasado
+			if reminder_time < now:
+				#Translators: Mensaje de error indicando que la fecha seleccionada está en el pasado
+				wx.MessageBox(_("La fecha y hora seleccionadas están en el pasado. Por favor, selecciona una fecha y hora futura."), _("Error"), wx.ICON_ERROR)
+				return
+		else:
+			reminder_time = now.replace(hour=hours, minute=minutes, second=0, microsecond=0)
+			if reminder_time < now:
+				reminder_time += timedelta(days=1)
+		
 		recurrence = self.recurrence_choice.GetValue() if self.recurrence_check.IsChecked() else None
 		# Si se selecciona un sonido personalizado, se guarda el archivo seleccionado
 		if self.custom_sound_check.IsChecked() and self.sound_choice.GetValue():
@@ -530,9 +659,10 @@ class ReminderApp(wx.Frame):
 		self.hours_field.SetSelection(-1)
 		self.minutes_field.SetSelection(-1)
 		self.recurrence_check.SetValue(False)
+		self.specific_date_check.SetValue(False)
+		self.toggle_specific_date(None)
 		self.recurrence_choice.Hide()
-
-#agregar atajos de teclado
+	#agregar atajos de teclado
 	def setup_accelerators(self):
 		#creamos identificadores para los atajos
 		load_folder = wx.NewIdRef()
@@ -573,6 +703,7 @@ def disableInSecureMode(decoratedCls):
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 	def __init__(self):
 		super().__init__()
+
 		config.conf.spec['remindersConfig'] = {
 			"numberOfTimesToNotifyReminder": "integer(default=1)",
 			"notificationInterval": "integer(default=10)"
@@ -628,17 +759,27 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		elif not self.frame.IsShown():
 			self.frame = ReminderApp(None)
 		self.frame.Show()
-
 	def check_active_reminders(self, event):
 		"""
 		Muestra los recordatorios activos en una ventana.
 		"""
 		if reminder_manager.reminders:
 			reminder_list = []
+			now = datetime.now()
+		
 			for index, (message, reminder_time, recurrence, sound_file, custom_interval) in enumerate(reminder_manager.reminders, start=1):
 				formatted_time = reminder_time.strftime("%H:%M")
+			
+				# Verificar si el recordatorio es para hoy o para una fecha futura
+				if reminder_time.date() == now.date():
+					time_text = f"programado para hoy a las {formatted_time}"
+				else:
+					formatted_date = reminder_time.strftime("%d/%m/%Y")
+					time_text = f"programado para el {formatted_date} a las {formatted_time}"
+				
 				recurrence_text = f", recurrente {recurrence}" if recurrence else ""
-				reminder_list.append(f"{index}: {message}, programado para las {formatted_time}{recurrence_text}")
+				reminder_list.append(f"{index}: {message}, {time_text}{recurrence_text}")
+			
 			reminders_text = "\n".join(reminder_list)
 			#Translators: título de la ventana para los recordatorios activos.
 			ui.browseableMessage(f"\n{reminders_text}", _("Recordatorios activos:"))
@@ -651,18 +792,24 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		Permite eliminar un recordatorio activo a través de un diálogo de selección.
 		"""
 		if reminder_manager.reminders:
+			now = datetime.now()
 			# Crear una lista de los nombres (mensajes) de los recordatorios activos junto con índices visibles.
-			reminder_messages = [
-				f"{i + 1}: {message}" 
-				for i, (message, _, _, _, _) in enumerate(reminder_manager.reminders)
-			]
+			reminder_messages = []
+			
+			for i, (message, reminder_time, _, _, _) in enumerate(reminder_manager.reminders):
+				if reminder_time.date() == now.date():
+					time_info = f"hoy a las {reminder_time.strftime('%H:%M')}"
+				else:
+					time_info = f"el {reminder_time.strftime('%d/%m/%Y')} a las {reminder_time.strftime('%H:%M')}"
+				
+				reminder_messages.append(f"{i + 1}: {message} ({time_info})")
 
 			# Crear un diálogo de selección única con los recordatorios activos.
 			#Translators: Mensaje y título del diálogo para eliminar recordatorios.
 			dlg = wx.SingleChoiceDialog(
 				None, 
-				_("Selecciona el recordatorio que deseas eliminar:"), 
-				_("Eliminar Recordatorio"), 
+				DELETE_REMINDER_MESSAGE, 
+				DELETE_REMINDER_TITLE, 
 				reminder_messages
 			)
 
@@ -679,8 +826,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 						# Notificar al usuario que el recordatorio fue eliminado.
 						#Mensaje y título de ventana que indican al usuario que el recordatorio ha sido eliminado.
 						gui.messageBox(
-							_("Recordatorio eliminado:\n\n'{}'").format(removed_reminder[0]),
-							_("Información")
+							REMINDER_DELETED_MESSAGE.format(removed_reminder[0]),
+							REMINDER_DELETED_TITLE
 						)
 					else:
 						#Translators: Mensaje y título de ventana que le indican al usuario que el recordatorio seleccionado ya no existe.

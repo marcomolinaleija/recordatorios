@@ -3,65 +3,74 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" type="text/css" href="../style.css" media="screen">
-<title>Recordatorios 1.2</title>
+<title>Recordatorios 1.4</title>
 </head>
 <body>
-<h1>Recordatorios</h1>
-<p>Este complemento permite al usuario añadir recordatorios de manera sencilla, notificando mediante un sonido de NVDA o un sonido personalizado cuando llegue la hora programada.</p>
-<h2>Uso del complemento</h2>
-<p>El complemento incluye 3 gestos sin asignar en los gestos de entrada de NVDA, bajo la categoría "Recordatorios":</p>
-<h3>1. Abrir la ventana para añadir un recordatorio</h3>
-<p>Esta opción te permitirá añadir uno o más recordatorios. Al abrir la ventana, automáticamente estarás enfocado en el cuadro para escribir el mensaje del recordatorio. </p>
+<h1>Complemento Recordatorios para NVDA</h1>
+<p>Este complemento permite a los usuarios añadir recordatorios de manera sencilla, recibiendo notificaciones mediante un sonido de NVDA o sonidos personalizados cuando llegue la hora programada.</p>
+<h2>Funcionalidades principales</h2>
 <ul>
-<li><strong>Configuración del recordatorio</strong>: </li>
-<li>Después de escribir tu mensaje, encontrarás dos cuadros combinados. El primero te permitirá seleccionar la hora en formato de 24 horas, y el segundo, los minutos. Puedes modificar estos valores según tus necesidades.</li>
-<li>También hay 2 casillas de verificación, que están desmarcadas por defecto. La primera pregunta si el recordatorio será recurrente. Al activarla, aparecerá un cuadro combinado donde podrás seleccionar la frecuencia: diaria, semanal, mensual o personalizada.</li>
-<li>
-<p>La segunda casilla, que también está desmarcada por defecto, te preguntará si deseas añadir un sonido personalizado para el recordatorio. Al marcarla, se mostrarán más opciones.</p>
-</li>
-<li>
-<p><strong>Sonidos personalizados</strong>: </p>
-</li>
-<li>La primera opción será un cuadro combinado que cargará los sonidos de la carpeta que hayas seleccionado. Solo se cargarán los archivos con extensión .wav.</li>
-<li>La segunda opción es un botón para reproducir el sonido seleccionado en el cuadro anterior, permitiéndote obtener una escucha previa antes de confirmar tu elección.</li>
-<li>Por último, encontrarás un botón para seleccionar la carpeta de sonidos, lo que te permitirá cargar los sonidos disponibles en el cuadro de selección.</li>
+<li>Crear recordatorios con mensajes personalizados</li>
+<li>Programar recordatorios para fechas y horas específicas</li>
+<li>Configurar recordatorios recurrentes (diarios, semanales, mensuales o personalizados)</li>
+<li>Utilizar sonidos personalizados para las notificaciones</li>
+<li>Administrar fácilmente los recordatorios activos</li>
 </ul>
-<p>Una vez que hayas configurado todos los elementos de acuerdo a tus preferencias, simplemente presiona el botón "Agregar recordatorio" para guardarlo. Los recordatorios se almacenan en un archivo llamado "recordatorios.json" en la carpeta de usuario de NVDA. Además, se genera un archivo adicional llamado "sonidos_recordatorios.json", que facilitará la carga de la carpeta de sonidos seleccionada. Esto significa que, al reiniciar NVDA o apagar y encender la PC nuevamente, la carpeta de sonidos ya estará disponible para que puedas elegir un sonido personalizado para tu recordatorio sin tener que seleccionar la carpeta nuevamente.</p>
-<h3>2. Verificar recordatorios activos</h3>
-<p>Esta opción te permitirá revisar los recordatorios que has configurado. Al seleccionar esta opción, se abrirá una ventana explorable donde podrás desplazarte con las flechas para revisar los recordatorios junto con su hora programada.</p>
-<h3>3. Lanzar el diálogo para eliminar recordatorios</h3>
-<p>Esto abrirá un diálogo de selección para que elimines un recordatorio</p>
-<h2>Menú herramientas de NVDA</h2>
-<p>Después de instalar correctamente el complemento, también se añadirá un menú en la sección de herramientas con las siguientes opciones:</p>
+<h2>Uso del complemento</h2>
+<p>El complemento incluye tres gestos sin asignar en los gestos de entrada de NVDA, bajo la categoría "Recordatorios":</p>
+<h3>1. Crear un nuevo recordatorio</h3>
+<p>Esta opción abre la ventana de configuración para añadir uno o más recordatorios. Al abrir la ventana, el foco se situará automáticamente en el campo para escribir el mensaje del recordatorio.</p>
+<h4>Configuración del recordatorio:</h4>
+<ul>
+<li><strong>Mensaje</strong>: Introduce el texto que deseas recibir como recordatorio.</li>
+<li><strong>Selección de fecha</strong> (opcional):</li>
+<li>Marca la casilla de verificación para programar el recordatorio en un día específico.</li>
+<li>Al activarla, aparecerá un selector de fecha donde podrás elegir el día deseado.</li>
+<li>Utiliza las flechas izquierda/derecha para moverte entre día, mes y año.</li>
+<li>Utiliza las flechas arriba/abajo para modificar los valores.</li>
+<li>La fecha se actualiza automáticamente al modificar los valores.</li>
+<li><strong>Hora</strong>: Selecciona la hora en formato 24 horas mediante el primer cuadro combinado.</li>
+<li><strong>Minutos</strong>: Selecciona los minutos en el segundo cuadro combinado.</li>
+<li><strong>Recordatorio recurrente</strong>:</li>
+<li>Marca esta casilla si deseas que el recordatorio se repita.</li>
+<li>Al activarla, aparecerá un cuadro combinado donde podrás seleccionar la frecuencia: diaria, semanal, mensual o personalizada.</li>
+<li><strong>Sonido personalizado</strong>:</li>
+<li>Marca esta casilla si deseas usar un sonido diferente al estándar de NVDA.</li>
+<li>Al activarla, se mostrarán las siguientes opciones:<ul>
+<li>Un cuadro combinado con los sonidos disponibles (archivos .wav).</li>
+<li>Un botón para reproducir el sonido seleccionado.</li>
+<li>Un botón para seleccionar la carpeta de sonidos personalizados.</li>
+</ul>
+</li>
+</ul>
+<p>Una vez configurado todo según tus preferencias, pulsa el botón "Agregar recordatorio" para guardarlo. Los recordatorios se almacenan en un archivo "recordatorios.json" en la carpeta de usuario de NVDA. Adicionalmente, se genera un archivo "sonidos_recordatorios.json" que guarda la ruta de la carpeta de sonidos seleccionada para futuros recordatorios.</p>
+<h3>2. Consultar recordatorios activos</h3>
+<p>Esta opción muestra una ventana explorable donde podrás revisar todos los recordatorios configurados. Utiliza las teclas de flecha para desplazarte por la lista y consultar los detalles de cada recordatorio junto con su programación.</p>
+<h3>3. Eliminar recordatorios</h3>
+<p>Esta opción abre un diálogo de selección que te permite elegir y eliminar los recordatorios que ya no necesites.</p>
+<h2>Acceso desde el menú Herramientas de NVDA</h2>
+<p>Después de instalar el complemento, se añade un submenú en la sección de Herramientas de NVDA con las siguientes opciones:</p>
 <ul>
 <li>Añadir recordatorio</li>
 <li>Ver recordatorios activos</li>
 <li>Eliminar recordatorio</li>
 </ul>
-<p>La única opción que cambia aquí es la de eliminar recordatorio. Al seleccionar esta opción, si tienes recordatorios configurados, se abrirá una lista con los nombres de los mismos para que puedas eliminar alguno. Si no tienes recordatorios activos, aparecerá un mensaje que te informará que no se han encontrado recordatorios configurados.</p>
-<h2>Configuraciones del complemento</h2>
-<p>En el menú de preferencias &gt; opciones de NVDA, se creará una nueva categoría llamada "Configuración de Recordatorios". Esta categoría contiene las siguientes opciones:</p>
+<p>Si seleccionas "Eliminar recordatorio" y tienes recordatorios configurados, se abrirá una lista con todos ellos para que selecciones cuál deseas eliminar. Si no hay recordatorios activos, se mostrará un mensaje informativo. Lo mismo ocurre con la opción para ver recordatorios activos.</p>
+<h2>Configuración del complemento</h2>
+<p>En el menú Preferencias &gt; Opciones de NVDA, encontrarás una nueva categoría llamada "Configuración de Recordatorios" con las siguientes opciones:</p>
 <ul>
-<li>
-<p><strong>Número de notificaciones</strong>: El primer cuadro te solicitará seleccionar el número de notificaciones que llegarán para el recordatorio.</p>
-</li>
-<li>
-<p><strong>Intervalo de notificaciones</strong>: El segundo cuadro te pedirá que establezcas el intervalo entre las notificaciones. Si, por ejemplo, seleccionaste 2 veces en el cuadro anterior, este intervalo determinará cada cuántos segundos recibirás esas notificaciones, pudiendo elegir intervalos de 5, 10 o 20 segundos.</p>
-</li>
+<li><strong>Número de notificaciones</strong>: Define cuántas veces se repetirá la notificación de cada recordatorio.</li>
+<li><strong>Intervalo de notificaciones</strong>: Establece el tiempo entre notificaciones consecutivas (5, 10 o 20 segundos).</li>
 </ul>
-<h1>Sugerencias</h1>
-<p>Si deseas hacer alguna sugerencia para el complemento, puedes enviar un correo a la siguiente dirección:</p>
-<p><a href="mailto:marcomolinaleija@hotmail.com">correo electrónico</a></p>
-<h1>Historial de versiones</h1>
+<h2>Sugerencias y contacto</h2>
+<p>Si deseas hacer alguna sugerencia para mejorar el complemento, puedes enviar un correo a la siguiente dirección:</p>
+<p><a href="mailto:contacto@marco-ml.com">contacto@marco-ml.com</a></p>
+<h2>Historial de versiones</h2>
 <ul>
-<li>
-<p><strong>Versión 1.1</strong>: Se añade la posibilidad de poder personalizar la recurrencia de los recordatorios (En minutos)</p>
-</li>
-<li>
-<p><strong>Versión 1.0</strong>: Versión inicial del complemento, que contiene todas las opciones descritas anteriormente.</p>
-</li>
+<li><strong>Versión 1.3</strong>: Implementación de recordatorios para fechas específicas.</li>
+<li><strong>Versión 1.2</strong>: Preparación del complemento para su distribución en la tienda de nvda.es.</li>
+<li><strong>Versión 1.1</strong>: Añadida la personalización de la recurrencia de los recordatorios (en minutos).</li>
+<li><strong>Versión 1.0</strong>: Versión inicial con todas las funcionalidades básicas.</li>
 </ul>
-<hr />
-<p>Y eso es todo por ahora. Muchas gracias por descargar, instalar y probar este complemento.</p>
 </body>
 </html>
