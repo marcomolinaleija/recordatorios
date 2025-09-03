@@ -4,16 +4,17 @@
 # Copyright (C) 2024 Marco Leija <marcomolinaleija@hotmail.com>
 
 
-import wx
-import wx.adv
 import threading
 import time
 import json
 import os
+from datetime import datetime, timedelta
+import wx
+import wx.adv
 import addonHandler
 addonHandler.initTranslation()
 
-from datetime import datetime, timedelta
+
 
 import tones
 import ui
@@ -29,6 +30,30 @@ DELETE_REMINDER_MESSAGE = _("Selecciona el recordatorio que deseas eliminar:")
 DELETE_REMINDER_TITLE = _("Eliminar recordatorio")
 REMINDER_DELETED_MESSAGE = _("El recordatorio '{}' ha sido eliminado.")
 REMINDER_DELETED_TITLE = _("Recordatorio eliminado")
+
+# Nuevas variables "constantes" para reprogramar recordatorios
+RESCHEDULE_REMINDER_MESSAGE = _("Selecciona el recordatorio que deseas reprogramar:")
+RESCHEDULE_REMINDER_TITLE = _("Reprogramar recordatorio")
+REMINDER_RESCHEDULED_MESSAGE = _("El recordatorio '{}' ha sido reprogramado para el {date} a las {time}.")
+REMINDER_RESCHEDULED_TITLE = _("Recordatorio reprogramado")
+NO_REMINDERS_TO_RESCHEDULE_MESSAGE = _("No hay recordatorios para reprogramar.")
+
+# Nuevas variables "constantes" para la funcionalidad de tareas
+TASK_REMINDER_LABEL = _("&Tareas (una por línea):")
+TASK_COMPLETED_STATUS = _("[Completada]")
+TASK_PENDING_STATUS = _("[Pendiente]")
+MANAGE_TASKS_MESSAGE = _("Selecciona el recordatorio cuyas tareas deseas gestionar:")
+MANAGE_TASKS_TITLE = _("Gestionar Tareas del Recordatorio")
+NO_REMINDERS_WITH_TASKS_MESSAGE = _("No hay recordatorios con tareas para gestionar.")
+ALL_TASKS_COMPLETED_MESSAGE = _("Todas las tareas del recordatorio '{}' han sido completadas.")
+INCOMPLETE_TASKS_MESSAGE = _("El recordatorio '{}' tiene tareas incompletas. Por favor, revísalas.")
+UPDATE_TASKS_MESSAGE = _("Tareas actualizadas correctamente.")
+
+# IDs para el diálogo de tareas incompletas
+ID_DELETE = wx.NewIdRef()
+ID_REVIEW_SNOOZE = wx.NewIdRef()
+ID_SNOOZE = wx.NewIdRef()
+
 
 class ReminderManager:
 	"""
@@ -49,7 +74,8 @@ class ReminderManager:
 		verifier_thread = threading.Thread(target=self.check_reminders, daemon=True)
 		# Iniciamos el hilo previamente creado
 		verifier_thread.start()
-	def add_reminder(self, message, reminder_time, recurrence=None, sound_file=None, custom_interval=None):
+
+	def add_reminder(self, message, reminder_time, recurrence=None, sound_file=None, custom_interval=None, tasks=None):
 		"""
 		Método que añade un recordatorio, verificando si no existe otro con el mismo nombre
 		Args:
@@ -58,7 +84,10 @@ class ReminderManager:
 			recurrence (str): La frecuencia del recordatorio. diario, semanal, mensual, si aplica.
 			sound_file (str): ruta con el sonido para el recordatorio
 			custom_interval (int): Tiempo personalizado para la notificación del recordatorio
+			tasks (list): Lista de diccionarios con las tareas del recordatorio (ej. [{'description': 'Tarea 1', 'completed': False}]).
 		"""
+		if tasks is None:
+			tasks = []
 	
 		# Convertimos el mensaje a minúsculas para la comparación
 		message_lower = message.lower()
@@ -68,7 +97,7 @@ class ReminderManager:
 			return
 
 		# en caso contrario, se añade el recordatorio y se notifica mediante ui.message
-		self.reminders.append((message, reminder_time, recurrence, sound_file, custom_interval))
+		self.reminders.append((message, reminder_time, recurrence, sound_file, custom_interval, tasks))
 	
 		# Verificar si el recordatorio es para hoy o para una fecha futura
 		now = datetime.now()
@@ -93,35 +122,96 @@ class ReminderManager:
 		"""
 		while self.running:
 			now = datetime.now()
-			for i, reminder in enumerate(self.reminders):
-				message, reminder_time, recurrence, sound_file, custom_interval = reminder
+			# Iteramos en reversa sobre una copia de la lista para poder eliminar elementos de forma segura.
+			for i, reminder in reversed(list(enumerate(self.reminders))):
+				message, reminder_time, recurrence, sound_file, custom_interval, tasks = reminder
 			
 				if reminder_time <= now:
 					# Notificar al usuario
-					self.notify(message, sound_file)
+					self.notify(message, sound_file, tasks)
 
-					# Reprogramar el recordatorio según la recurrencia
-					if custom_interval:
-						reminder_time += timedelta(minutes=custom_interval)
-					elif recurrence == "diario":
-						reminder_time += timedelta(days=1)
-					elif recurrence == "semanal":
-						reminder_time += timedelta(weeks=1)
-					elif recurrence == "mensual":
-						reminder_time = self.add_month(reminder_time)
-					else:
-						# Si no es recurrente, eliminar el recordatorio y continuar
-						self.reminders.pop(i)
+					# Reprogramar el recordatorio si es recurrente
+					is_recurrent = recurrence or custom_interval
+					if is_recurrent:
+						if custom_interval:
+							new_reminder_time = reminder_time + timedelta(minutes=custom_interval)
+						elif recurrence == "diario":
+							new_reminder_time = reminder_time + timedelta(days=1)
+						elif recurrence == "semanal":
+							new_reminder_time = reminder_time + timedelta(weeks=1)
+						elif recurrence == "mensual":
+							new_reminder_time = self.add_month(reminder_time)
+						
+						# Actualizar el recordatorio en la lista
+						self.reminders[i] = (message, new_reminder_time, recurrence, sound_file, custom_interval, tasks)
 						self.save_reminders()
-						continue
-
-					# Actualizar el recordatorio en la lista
-					self.reminders[i] = (message, reminder_time, recurrence, sound_file, custom_interval)
-					self.save_reminders()
+					else:
+						# Lógica para recordatorios no recurrentes
+						has_incomplete_tasks = tasks and any(not task['completed'] for task in tasks)
+						
+						if has_incomplete_tasks:
+							# Tiene tareas incompletas, mostrar diálogo a través del hilo principal.
+							# Primero, eliminamos el recordatorio de la lista para evitar que se vuelva a activar.
+							reminder_to_process = self.reminders.pop(i)
+							self.save_reminders()
+							# Luego, llamamos a la función que mostrará el diálogo.
+							wx.CallAfter(self.show_incomplete_task_dialog, reminder_to_process)
+						else:
+							# No tiene tareas incompletas o no tiene tareas, se elimina.
+							self.reminders.pop(i)
+							self.save_reminders()
 
 			# Verificar recordatorios cada segundo
 			time.sleep(1)
 
+	def show_incomplete_task_dialog(self, reminder_data):
+		"""
+		Muestra un diálogo para manejar un recordatorio no recurrente con tareas incompletas.
+		Este método debe ser llamado desde el hilo principal usando wx.CallAfter.
+		"""
+		message, original_time, recurrence, sound_file, custom_interval, tasks = reminder_data
+		
+		dialog = IncompleteTaskDialog(gui.mainFrame, message)
+		result = dialog.ShowModal()
+		dialog.Destroy()
+
+		if result == ID_DELETE:
+			# El recordatorio ya fue eliminado de la lista, solo notificamos.
+			ui.message(REMINDER_DELETED_MESSAGE.format(message))
+
+		elif result == ID_REVIEW_SNOOZE:
+			# Posponer 10 minutos y notificar.
+			snooze_minutes = 10
+			new_time = datetime.now() + timedelta(minutes=snooze_minutes)
+			# Re-agregar el recordatorio.
+			self.reminders.append((message, new_time, recurrence, sound_file, custom_interval, tasks))
+			self.save_reminders()
+			# Translators: Confirmation that the reminder was snoozed and suggestion to manage tasks from the menu.
+			ui.message(_("Recordatorio pospuesto por {} minutos. Puedes gestionar las tareas desde el menú Herramientas.").format(snooze_minutes))
+
+		elif result == ID_SNOOZE:
+			# Preguntar por un tiempo personalizado para posponer.
+			snooze_dialog = SnoozeDialog(gui.mainFrame)
+			if snooze_dialog.ShowModal() == wx.ID_OK:
+				snooze_minutes = snooze_dialog.get_minutes()
+				new_time = datetime.now() + timedelta(minutes=snooze_minutes)
+				# Re-agregar el recordatorio
+				self.reminders.append((message, new_time, recurrence, sound_file, custom_interval, tasks))
+				self.save_reminders()
+				# Translators: Confirmation message that the reminder has been snoozed for a custom amount of time.
+				ui.message(_("Recordatorio pospuesto por {} minutos.").format(snooze_minutes))
+			else:
+				# El usuario canceló, re-agregamos el recordatorio para no perderlo.
+				self.reminders.append(reminder_data)
+				self.save_reminders()
+				# Translators: Message indicating that the snooze action was cancelled.
+				ui.message(_("Acción de posponer cancelada. El recordatorio no fue modificado."))
+			snooze_dialog.Destroy()
+		
+		else: # El diálogo fue cerrado o cancelado
+			# Re-agregar el recordatorio para no perderlo.
+			self.reminders.append(reminder_data)
+			self.save_reminders()
 
 	def add_month(self, date):
 		"""
@@ -143,21 +233,41 @@ class ReminderManager:
 		# Retornamos una nueva fecha con el mes y el año actualizados.
 		return date.replace(month=month, year=year)
 
-	def notify(self, message, sound_file=None):
+	def notify(self, message, sound_file=None, tasks=None):
 		"""
 		Método que envía la notificación cuando llega la hora del recordatorio
 		Args:
 			message (str): el mensaje que se mostrará al usuario
 			sound_file (str): Ruta al sonido personalizado, si se seleccionó
+			tasks (list): Lista de diccionarios con las tareas del recordatorio.
 		"""
+		if tasks is None:
+			tasks = []
+
 		# Obtenemos el valor de notificationInterval como entero desde remindersConfig
 		self.interval = int(config.conf["remindersConfig"]["notificationInterval"])
 		# Ahora obtenemos el número de veces que se reproducirá la notificación del recordatorio
 		num_times = int(config.conf["remindersConfig"]["numberOfTimesToNotifyReminder"])
-		# bucle que toma como rango el número de notificaciones
+		
+		all_tasks_completed = True
+		if tasks:
+			all_tasks_completed = all(task['completed'] for task in tasks)
+
 		for i in range(num_times):
-			# si hay un sonido seleccionado para el recordatorio y si el archivo existe, continúa con el bloque de instrucciones.
-			ui.message(_("Recordatorio: {}").format(message))
+			notification_message = _("Recordatorio: {}").format(message)
+			if tasks:
+				tasks_str = "\n" + _("Tareas:") + "\n" + "\n".join([
+					f"- {TASK_COMPLETED_STATUS if task['completed'] else TASK_PENDING_STATUS} {task['description']}"
+					for task in tasks
+				])
+				notification_message += tasks_str
+				if not all_tasks_completed:
+					notification_message += "\n" + INCOMPLETE_TASKS_MESSAGE.format(message)
+				else:
+					notification_message += "\n" + ALL_TASKS_COMPLETED_MESSAGE.format(message)
+
+			ui.message(notification_message)
+
 			if sound_file and os.path.exists(sound_file):
 				# Reproducir el sonido personalizado usando nvwave
 				playWaveFile(sound_file)
@@ -183,7 +293,9 @@ class ReminderManager:
 		# Abrimos el archivo file_path en modo escritura ('w')
 		with open(self.file_path, 'w') as file:
 			# Creamos una lista de los recordatorios formateando la hora para almacenarlos
-			reminders_data = [(msg, time.strftime('%Y-%m-%d %H:%M'), rec, sound_file, custom_interval) for msg, time, rec, sound_file, custom_interval in self.reminders]
+			reminders_data = []
+			for msg, time_obj, rec, sound_file, custom_interval, tasks in self.reminders:
+				reminders_data.append((msg, time_obj.strftime('%Y-%m-%d %H:%M'), rec, sound_file, custom_interval, tasks))
 			# Escribimos la lista de los recordatorios en el archivo con formato json
 			json.dump(reminders_data, file)
 
@@ -197,9 +309,36 @@ class ReminderManager:
 			with open(self.file_path, 'r') as file:
 				# Cargamos los datos del archivo en la variable reminders_data como json
 				reminders_data = json.load(file)
-				# Convertimos los datos cargados a la estructura de recordatorios,  convirtiendo el tiempo de cadena a un objeto datetime.
-				self.reminders = [(msg, datetime.strptime(time, '%Y-%m-%d %H:%M'), rec, sound_file, custom_interval) for msg, time, rec, sound_file, custom_interval in reminders_data]
+				# Convertimos los datos cargados a la estructura de recordatorios, convirtiendo el tiempo de cadena a un objeto datetime.
+				# Añadimos un valor por defecto para 'tasks' si no existe en los datos cargados (para compatibilidad con versiones anteriores)
+				self.reminders = []
+				for item in reminders_data:
+					if len(item) == 5: # Formato antiguo sin tareas
+						msg, time_str, rec, sound_file, custom_interval = item
+						tasks = []
+					elif len(item) == 6: # Nuevo formato con tareas
+						msg, time_str, rec, sound_file, custom_interval, tasks = item
+					else:
+						continue # Saltar entradas con formato inesperado
+					self.reminders.append((msg, datetime.strptime(time_str, '%Y-%m-%d %H:%M'), rec, sound_file, custom_interval, tasks))
 
+	def update_reminder(self, index, new_reminder_time, new_recurrence=None, new_sound_file=None, new_custom_interval=None, new_tasks=None):
+		"""
+		Actualiza un recordatorio existente en la lista.
+		Args:
+			index (int): El índice del recordatorio a actualizar.
+			new_reminder_time (datetime): La nueva hora del recordatorio.
+			new_recurrence (str): La nueva frecuencia del recordatorio.
+			new_sound_file (str): La nueva ruta del archivo de sonido.
+			new_custom_interval (int): El nuevo intervalo personalizado.
+			new_tasks (list): La nueva lista de tareas.
+		"""
+		if 0 <= index < len(self.reminders):
+			message, _, _, _, _, _ = self.reminders[index] # Mantener el mensaje original
+			self.reminders[index] = (message, new_reminder_time, new_recurrence, new_sound_file, new_custom_interval, new_tasks)
+			self.save_reminders()
+			return True
+		return False
 
 
 class ReminderApp(wx.Frame):
@@ -212,7 +351,7 @@ class ReminderApp(wx.Frame):
 		super(ReminderApp, self).__init__(*args, **kw)
 		# Configuramos el título de la ventana y el tamaño de la misma
 		self.SetTitle(_("Añadir recordatorio"))
-		self.SetSize((400, 400))
+		self.SetSize((400, 550)) # Aumentar el tamaño para el campo de tareas
 		# Variables para el sonido personalizado
 		self.sound_folder = None
 		self.selected_sound = None
@@ -282,6 +421,13 @@ class ReminderApp(wx.Frame):
 
 		self.message_field = wx.TextCtrl(self.panel)
 		sizer.Add(self.message_field, 0, wx.ALL | wx.EXPAND, 5)
+
+		# Campo para tareas (checklist)
+		tasks_label = wx.StaticText(self.panel, label=TASK_REMINDER_LABEL)
+		sizer.Add(tasks_label, 0, wx.ALL | wx.EXPAND, 5)
+		self.tasks_field = wx.TextCtrl(self.panel, style=wx.TE_MULTILINE | wx.TE_DONTWRAP)
+		sizer.Add(self.tasks_field, 1, wx.ALL | wx.EXPAND, 5) # Usar 1 para que ocupe espacio vertical
+
 		# Nueva casilla para seleccionar si usar fecha específica
 		#Translators: Casilla que pregunta al usuario si desea usar una fecha específica
 		self.specific_date_check = wx.CheckBox(self.panel, label=_("&Usar fecha específica"))
@@ -604,6 +750,16 @@ class ReminderApp(wx.Frame):
 		message = self.message_field.GetValue()
 		hours = self.hours_field.GetValue().strip()
 		minutes = self.minutes_field.GetValue().strip()
+		
+		# Procesar las tareas del campo de texto
+		tasks_text = self.tasks_field.GetValue().strip()
+		tasks = []
+		if tasks_text:
+			for line in tasks_text.splitlines():
+				task_description = line.strip()
+				if task_description:
+					tasks.append({'description': task_description, 'completed': False})
+
 		if not message or not hours or not minutes:
 			# Mandamos un mensaje de error.
 			#Translators: Mensaje de error notificando que los campos no pueden quedar sin contenido.
@@ -653,9 +809,10 @@ class ReminderApp(wx.Frame):
 			self.selected_sound = os.path.join(self.sound_folder, self.sound_choice.GetValue())
 		else:
 			self.selected_sound = None
-		self.reminder_manager.add_reminder(message, reminder_time, recurrence, self.selected_sound, custom_interval)
+		self.reminder_manager.add_reminder(message, reminder_time, recurrence, self.selected_sound, custom_interval, tasks)
 
 		self.message_field.Clear()
+		self.tasks_field.Clear() # Limpiar el campo de tareas
 		self.hours_field.SetSelection(-1)
 		self.minutes_field.SetSelection(-1)
 		self.recurrence_check.SetValue(False)
@@ -735,11 +892,19 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		viewRemindersMenuItem = wx.MenuItem(remindersSubMenu, wx.ID_ANY, _("Ver Recordatorios Activos"))
 		#Translators: Etiqueta para el item de menú eliminar recordatorio.
 		deleteReminderMenuItem = wx.MenuItem(remindersSubMenu, wx.ID_ANY, _("Eliminar Recordatorio"))
+		#Translators: Etiqueta para el item de menú reprogramar recordatorio.
+		rescheduleReminderMenuItem = wx.MenuItem(remindersSubMenu, wx.ID_ANY, _("Reprogramar Recordatorio"))
+		#Translators: Etiqueta para el item de menú gestionar tareas.
+		manageTasksMenuItem = wx.MenuItem(remindersSubMenu, wx.ID_ANY, _("Gestionar Tareas"))
+
 
 		# Añadir los ítems al submenú.
 		remindersSubMenu.Append(addReminderMenuItem)
 		remindersSubMenu.Append(viewRemindersMenuItem)
 		remindersSubMenu.Append(deleteReminderMenuItem)
+		remindersSubMenu.Append(rescheduleReminderMenuItem)
+		remindersSubMenu.Append(manageTasksMenuItem)
+
 
 		# Añadir el submenú de Recordatorios al menú de herramientas.
 		#Translators: Nombre para el submenú.
@@ -749,6 +914,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		gui.mainFrame.sysTrayIcon.Bind(wx.EVT_MENU, self.open_reminder_window, addReminderMenuItem)
 		gui.mainFrame.sysTrayIcon.Bind(wx.EVT_MENU, self.check_active_reminders, viewRemindersMenuItem)
 		gui.mainFrame.sysTrayIcon.Bind(wx.EVT_MENU, self.delete_reminder, deleteReminderMenuItem)
+		gui.mainFrame.sysTrayIcon.Bind(wx.EVT_MENU, self.reschedule_reminder, rescheduleReminderMenuItem)
+		gui.mainFrame.sysTrayIcon.Bind(wx.EVT_MENU, self.manage_tasks, manageTasksMenuItem)
+
 
 	def open_reminder_window(self, event):
 		"""
@@ -759,30 +927,90 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		elif not self.frame.IsShown():
 			self.frame = ReminderApp(None)
 		self.frame.Show()
+
+	def format_time_remaining(self, future_datetime):
+		"""
+		Formatea el tiempo restante hasta una fecha y hora futuras de manera legible.
+		"""
+		now = datetime.now()
+		time_diff = future_datetime - now
+
+		if time_diff.total_seconds() < 0:
+			return _("ya ha pasado")
+
+		days = time_diff.days
+		hours = time_diff.seconds // 3600
+		minutes = (time_diff.seconds % 3600) // 60
+		seconds = time_diff.seconds % 60
+
+		parts = []
+		if days > 0:
+			years = days // 365
+			remaining_days = days % 365
+			if years > 0:
+				parts.append(_(f"{years} año{'s' if years > 1 else ''}"))
+			
+			# Considerar meses si hay muchos días restantes y no hay años
+			if remaining_days > 30 and years == 0:
+				months = remaining_days // 30
+				remaining_days %= 30
+				parts.append(_(f"{months} mes{'es' if months > 1 else ''}"))
+			
+			if remaining_days > 0:
+				parts.append(_(f"{remaining_days} día{'s' if remaining_days > 1 else ''}"))
+		
+		if hours > 0:
+			parts.append(_(f"{hours} hora{'s' if hours > 1 else ''}"))
+		if minutes > 0:
+			parts.append(_(f"{minutes} minuto{'s' if minutes > 1 else ''}"))
+		if seconds > 0 and not parts: # Solo mostrar segundos si es lo único que queda
+			parts.append(_(f"{seconds} segundo{'s' if seconds > 1 else ''}"))
+
+		if not parts:
+			return _("en este momento")
+		
+		return _("en ") + ", ".join(parts)
+
+
 	def check_active_reminders(self, event):
 		"""
-		Muestra los recordatorios activos en una ventana.
+		Muestra los recordatorios activos en una ventana, incluyendo el tiempo restante y las tareas.
 		"""
 		if reminder_manager.reminders:
-			reminder_list = []
+			reminder_html_list = []
 			now = datetime.now()
 		
-			for index, (message, reminder_time, recurrence, sound_file, custom_interval) in enumerate(reminder_manager.reminders, start=1):
+			for index, (message, reminder_time, recurrence, sound_file, custom_interval, tasks) in enumerate(reminder_manager.reminders, start=1):
 				formatted_time = reminder_time.strftime("%H:%M")
-			
+				
+				time_remaining_str = self.format_time_remaining(reminder_time)
+
 				# Verificar si el recordatorio es para hoy o para una fecha futura
 				if reminder_time.date() == now.date():
-					time_text = f"programado para hoy a las {formatted_time}"
+					date_text = _("hoy")
 				else:
-					formatted_date = reminder_time.strftime("%d/%m/%Y")
-					time_text = f"programado para el {formatted_date} a las {formatted_time}"
+					date_text = reminder_time.strftime("%d/%m/%Y")
 				
-				recurrence_text = f", recurrente {recurrence}" if recurrence else ""
-				reminder_list.append(f"{index}: {message}, {time_text}{recurrence_text}")
+				recurrence_text = f", recurrente {_('diario') if recurrence == 'diario' else _('semanal') if recurrence == 'semanal' else _('mensual') if recurrence == 'mensual' else _('personalizado')}" if recurrence else ""
+				
+				# Construir el HTML para cada recordatorio
+				reminder_entry_html =""
+				reminder_entry_html += f"<h2>{message}</h1>"
+				reminder_entry_html += f"<p>{_('Fecha')}: {date_text} {_('a las')} {formatted_time}{recurrence_text}</p>"
+				reminder_entry_html += f"<p>{_('Tiempo restante')}: {time_remaining_str}</p>"
+				
+				if tasks:
+					reminder_entry_html += f"<h3>{_('Tareas')}:</h2><ol>"
+					for task in tasks:
+						status = TASK_COMPLETED_STATUS if task['completed'] else TASK_PENDING_STATUS
+						reminder_entry_html += f"<li><strong>{status}</strong> {task['description']}</li>"
+					reminder_entry_html += "</ol>"
+				
+				reminder_html_list.append(reminder_entry_html)
 			
-			reminders_text = "\n".join(reminder_list)
+			reminders_html = "<hr>".join(reminder_html_list) # Separador entre recordatorios
 			#Translators: título de la ventana para los recordatorios activos.
-			ui.browseableMessage(f"\n{reminders_text}", _("Recordatorios activos:"))
+			ui.browseableMessage(reminders_html, _("Recordatorios activos:"), isHtml=True)
 		else:
 			#Translators: Mensaje que le indica al usuario que no hay recordatorios activos.
 			ui.message(_("No hay recordatorios activos."))
@@ -796,7 +1024,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			# Crear una lista de los nombres (mensajes) de los recordatorios activos junto con índices visibles.
 			reminder_messages = []
 			
-			for i, (message, reminder_time, _, _, _) in enumerate(reminder_manager.reminders):
+			for i, (message, reminder_time, _, _, _, _) in enumerate(reminder_manager.reminders):
 				if reminder_time.date() == now.date():
 					time_info = f"hoy a las {reminder_time.strftime('%H:%M')}"
 				else:
@@ -848,6 +1076,136 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			#Translators: Mensaje que le indica al usuario que no hay recordatorios para poder eliminar.
 			ui.message(_("No hay recordatorios para eliminar."))
 
+	def reschedule_reminder(self, event):
+		"""
+		Permite reprogramar un recordatorio activo a través de un diálogo de selección.
+		"""
+		if reminder_manager.reminders:
+			now = datetime.now()
+			reminder_messages = []
+			for i, (message, reminder_time, _, _, _, _) in enumerate(reminder_manager.reminders):
+				if reminder_time.date() == now.date():
+					time_info = f"hoy a las {reminder_time.strftime('%H:%M')}"
+				else:
+					time_info = f"el {reminder_time.strftime('%d/%m/%Y')} a las {reminder_time.strftime('%H:%M')}"
+				reminder_messages.append(f"{i + 1}: {message} ({time_info})")
+
+			dlg = wx.SingleChoiceDialog(
+				None, 
+				RESCHEDULE_REMINDER_MESSAGE, 
+				RESCHEDULE_REMINDER_TITLE, 
+				reminder_messages
+			)
+
+			if dlg.ShowModal() == wx.ID_OK:
+				try:
+					selection_index = dlg.GetSelection()
+					if 0 <= selection_index < len(reminder_manager.reminders):
+						original_reminder = reminder_manager.reminders[selection_index]
+						original_message, _, original_recurrence, original_sound_file, original_custom_interval, original_tasks = original_reminder
+
+						# Abrir una nueva ventana para obtener la nueva fecha y hora
+						reschedule_dlg = RescheduleReminderDialog(None, original_message)
+						if reschedule_dlg.ShowModal() == wx.ID_OK:
+							new_date_wx = reschedule_dlg.date_picker.GetValue()
+							new_hours = int(reschedule_dlg.hours_field.GetValue().strip())
+							new_minutes = int(reschedule_dlg.minutes_field.GetValue().strip())
+
+							new_reminder_time = datetime(
+								new_date_wx.GetYear(), 
+								new_date_wx.GetMonth() + 1, 
+								new_date_wx.GetDay(), 
+								hour=new_hours, 
+								minute=new_minutes, 
+								second=0, 
+								microsecond=0
+							)
+
+							if new_reminder_time < now:
+								wx.MessageBox(_("La nueva fecha y hora seleccionadas están en el pasado. Por favor, selecciona una fecha y hora futura."), _("Error"), wx.ICON_ERROR)
+							else:
+								if reminder_manager.update_reminder(selection_index, new_reminder_time, original_recurrence, original_sound_file, original_custom_interval, original_tasks):
+									gui.messageBox(
+										REMINDER_RESCHEDULED_MESSAGE.format(
+											original_message, 
+											date=new_reminder_time.strftime('%d/%m/%Y'), 
+											time=new_reminder_time.strftime('%H:%M')
+										),
+										REMINDER_RESCHEDULED_TITLE
+									)
+								else:
+									gui.messageBox(
+										_("Ocurrió un error al intentar reprogramar el recordatorio."), 
+										_("Error"), 
+										wx.ICON_ERROR
+									)
+						reschedule_dlg.Destroy()
+					else:
+						gui.messageBox(
+							_("El recordatorio seleccionado ya no existe."), 
+							_("Error"), 
+							wx.ICON_ERROR
+						)
+				except Exception as e:
+					gui.messageBox(
+						_("Ocurrió un error al intentar reprogramar el recordatorio:\n\n{}").format(str(e)), 
+						_("Error"), 
+						wx.ICON_ERROR
+					)
+			dlg.Destroy()
+		else:
+			ui.message(NO_REMINDERS_TO_RESCHEDULE_MESSAGE)
+
+	def manage_tasks(self, event):
+		"""
+		Permite gestionar las tareas de un recordatorio activo.
+		"""
+		reminders_with_tasks = [
+			(i, reminder) for i, reminder in enumerate(reminder_manager.reminders) if reminder[5] # reminder[5] es la lista de tasks
+		]
+
+		if reminders_with_tasks:
+			reminder_options = []
+			for i, (original_index, (message, reminder_time, _, _, _, _)) in enumerate(reminders_with_tasks):
+				if reminder_time.date() == datetime.now().date():
+					time_info = f"hoy a las {reminder_time.strftime('%H:%M')}"
+				else:
+					time_info = f"el {reminder_time.strftime('%d/%m/%Y')} a las {reminder_time.strftime('%H:%M')}"
+				reminder_options.append(f"{i + 1}: {message} ({time_info})")
+
+			dlg = wx.SingleChoiceDialog(
+				None,
+				MANAGE_TASKS_MESSAGE,
+				MANAGE_TASKS_TITLE,
+				reminder_options
+			)
+
+			if dlg.ShowModal() == wx.ID_OK:
+				try:
+					selection_in_options = dlg.GetSelection()
+					original_index_in_reminders = reminders_with_tasks[selection_in_options][0]
+					
+					selected_reminder_data = reminder_manager.reminders[original_index_in_reminders]
+					message, reminder_time, recurrence, sound_file, custom_interval, tasks = selected_reminder_data
+
+					manage_tasks_dlg = ManageTasksDialog(None, message, tasks)
+					if manage_tasks_dlg.ShowModal() == wx.ID_OK:
+						updated_tasks = manage_tasks_dlg.modified_tasks
+						if reminder_manager.update_reminder(original_index_in_reminders, reminder_time, recurrence, sound_file, custom_interval, updated_tasks):
+							ui.message(UPDATE_TASKS_MESSAGE)
+						else:
+							gui.messageBox(_("Ocurrió un error al actualizar las tareas del recordatorio."), _("Error"), wx.ICON_ERROR)
+					manage_tasks_dlg.Destroy()
+				except Exception as e:
+					gui.messageBox(
+						_("Ocurrió un error al gestionar las tareas del recordatorio:\n\n{}").format(str(e)),
+						_("Error"),
+						wx.ICON_ERROR
+					)
+			dlg.Destroy()
+		else:
+			ui.message(NO_REMINDERS_WITH_TASKS_MESSAGE)
+
 	@scriptHandler.script(
 		#Translators: Descripción para el gesto que lanza la ventana de recordatorios.
 		description=_("Abrir la ventana de recordatorios"),
@@ -879,8 +1237,194 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 	def script_open_delete_dialog(self, gesture):
 		wx.CallAfter(self.delete_reminder, None)
 
+	@scriptHandler.script(
+		#Translators: Descripción del gesto que lanza el diálogo para reprogramar recordatorios.
+		description=_("Lanza el diálogo para reprogramar recordatorios"),
+		#Translators: Nombre de la categoría.
+		category=_("Recordatorios"),
+		gesture=None
+	)
+	def script_open_reschedule_dialog(self, gesture):
+		wx.CallAfter(self.reschedule_reminder, None)
+
+	@scriptHandler.script(
+		#Translators: Descripción del gesto que lanza el diálogo para gestionar tareas de recordatorios.
+		description=_("Lanza el diálogo para gestionar tareas de recordatorios"),
+		#Translators: Nombre de la categoría.
+		category=_("Recordatorios"),
+		gesture=None
+	)
+	def script_open_manage_tasks_dialog(self, gesture):
+		wx.CallAfter(self.manage_tasks, None)
+
+
 reminder_manager = ReminderManager()
 
+
+class RescheduleReminderDialog(wx.Dialog):
+	"""
+	Diálogo para seleccionar la nueva fecha y hora de un recordatorio.
+	"""
+	def __init__(self, parent, message):
+		super(RescheduleReminderDialog, self).__init__(parent, title=_("Reprogramar: {}").format(message))
+		self.panel = wx.Panel(self)
+		self.create_interface()
+		self.SetSize((350, 300))
+
+	def create_interface(self):
+		sizer = wx.BoxSizer(wx.VERTICAL)
+
+		message_label = wx.StaticText(self.panel, label=_("Selecciona la nueva fecha y hora para el recordatorio:"))
+		sizer.Add(message_label, 0, wx.ALL | wx.EXPAND, 5)
+
+		# Selector de fecha
+		self.date_picker = wx.adv.DatePickerCtrl(self.panel, style=wx.adv.DP_DROPDOWN | wx.adv.DP_SHOWCENTURY)
+		sizer.Add(self.date_picker, 0, wx.ALL | wx.EXPAND, 5)
+		today = wx.DateTime.Now()
+		self.date_picker.SetValue(today)
+
+		# Selector de horas
+		hours_label = wx.StaticText(self.panel, label=_("Nueva Hora (formato 24h):"))
+		sizer.Add(hours_label, 0, wx.ALL | wx.EXPAND, 5)
+		self.hours_field = wx.ComboBox(self.panel, choices=[str(i).zfill(2) for i in range(24)], style=wx.CB_DROPDOWN)
+		sizer.Add(self.hours_field, 0, wx.ALL | wx.EXPAND, 5)
+		self.hours_field.SetSelection(datetime.now().hour) # Pre-seleccionar la hora actual
+
+		# Selector de minutos
+		minutes_label = wx.StaticText(self.panel, label=_("Nuevos Minutos:"))
+		sizer.Add(minutes_label, 0, wx.ALL | wx.EXPAND, 5)
+		self.minutes_field = wx.ComboBox(self.panel, choices=[str(i).zfill(2) for i in range(60)], style=wx.CB_DROPDOWN)
+		sizer.Add(self.minutes_field, 0, wx.ALL | wx.EXPAND, 5)
+		self.minutes_field.SetSelection(datetime.now().minute) # Pre-seleccionar los minutos actuales
+
+		# Botones de OK y Cancelar
+		btn_sizer = wx.StdDialogButtonSizer()
+		ok_button = wx.Button(self.panel, wx.ID_OK, _("Aceptar"))
+		cancel_button = wx.Button(self.panel, wx.ID_CANCEL, _("Cancelar"))
+		btn_sizer.AddButton(ok_button)
+		btn_sizer.AddButton(cancel_button)
+		btn_sizer.Realize()
+		sizer.Add(btn_sizer, 0, wx.ALL | wx.CENTER, 5)
+
+		self.panel.SetSizer(sizer)
+
+
+class ManageTasksDialog(wx.Dialog):
+	"""
+	Diálogo para gestionar las tareas de un recordatorio.
+	Permite marcar/desmarcar tareas como completadas.
+	"""
+	def __init__(self, parent, reminder_message, tasks):
+		super(ManageTasksDialog, self).__init__(parent, title=_("Gestionar Tareas: {}").format(reminder_message))
+		self.original_tasks = tasks
+		self.modified_tasks = [task.copy() for task in tasks] # Copia para no modificar la original directamente
+		self.checkboxes = []
+		self.panel = wx.Panel(self)
+		self.create_interface()
+		self.SetSize((450, 400)) # Ajustar tamaño del diálogo
+
+	def create_interface(self):
+		sizer = wx.BoxSizer(wx.VERTICAL)
+
+		if not self.modified_tasks:
+			no_tasks_label = wx.StaticText(self.panel, label=_("Este recordatorio no tiene tareas."))
+			sizer.Add(no_tasks_label, 0, wx.ALL | wx.EXPAND, 5)
+		else:
+			for i, task in enumerate(self.modified_tasks):
+				checkbox = wx.CheckBox(self.panel, label=task['description'])
+				checkbox.SetValue(task['completed'])
+				checkbox.Bind(wx.EVT_CHECKBOX, self.on_task_checkbox_toggle)
+				self.checkboxes.append(checkbox)
+				sizer.Add(checkbox, 0, wx.ALL | wx.EXPAND, 5)
+
+		btn_sizer = wx.StdDialogButtonSizer()
+		ok_button = wx.Button(self.panel, wx.ID_OK, _("Aceptar"))
+		cancel_button = wx.Button(self.panel, wx.ID_CANCEL, _("Cancelar"))
+		btn_sizer.AddButton(ok_button)
+		btn_sizer.AddButton(cancel_button)
+		btn_sizer.Realize()
+		sizer.Add(btn_sizer, 0, wx.ALL | wx.CENTER, 5)
+
+		self.panel.SetSizer(sizer)
+
+	def on_task_checkbox_toggle(self, event):
+		checkbox = event.GetEventObject()
+		index = self.checkboxes.index(checkbox)
+		self.modified_tasks[index]['completed'] = checkbox.GetValue()
+		event.Skip()
+
+class SnoozeDialog(wx.Dialog):
+	"""Diálogo para obtener el tiempo para posponer en minutos."""
+	def __init__(self, parent):
+		super(SnoozeDialog, self).__init__(parent, title=_("Posponer recordatorio"))
+		self.panel = wx.Panel(self)
+		self.minutes = 10 # Valor por defecto
+		self.create_interface()
+		self.SetSize((300, 150))
+		self.minutes_spin.SetFocus()
+
+	def create_interface(self):
+		sizer = wx.BoxSizer(wx.VERTICAL)
+		# Translators: Label asking the user for how many minutes to snooze the reminder.
+		label = wx.StaticText(self.panel, label=_("Posponer por (minutos):"))
+		sizer.Add(label, 0, wx.ALL | wx.EXPAND, 10)
+
+		self.minutes_spin = wx.SpinCtrl(self.panel, value="10", min=1, max=1440) # Max 24 horas
+		sizer.Add(self.minutes_spin, 0, wx.ALL | wx.EXPAND, 10)
+
+		btn_sizer = wx.StdDialogButtonSizer()
+		ok_button = wx.Button(self.panel, wx.ID_OK, _("Aceptar"))
+		cancel_button = wx.Button(self.panel, wx.ID_CANCEL, _("Cancelar"))
+		btn_sizer.AddButton(ok_button)
+		btn_sizer.AddButton(cancel_button)
+		btn_sizer.Realize()
+		sizer.Add(btn_sizer, 1, wx.ALL | wx.CENTER, 10)
+
+		self.panel.SetSizer(sizer)
+
+		ok_button.Bind(wx.EVT_BUTTON, self.on_ok)
+
+	def on_ok(self, event):
+		self.minutes = self.minutes_spin.GetValue()
+		self.EndModal(wx.ID_OK)
+
+	def get_minutes(self):
+		return self.minutes
+
+class IncompleteTaskDialog(wx.Dialog):
+	"""Diálogo que se muestra cuando un recordatorio con tareas incompletas llega a su hora."""
+	def __init__(self, parent, message):
+		# Translators: Title for the dialog about a reminder with pending tasks.
+		super(IncompleteTaskDialog, self).__init__(parent, title=_("Tareas pendientes"))
+		self.panel = wx.Panel(self)
+		self.create_interface(message)
+		self.SetSize((450, 200))
+
+	def create_interface(self, message):
+		sizer = wx.BoxSizer(wx.VERTICAL)
+		# Translators: Message in the dialog explaining that the reminder has pending tasks and asking what to do.
+		label = wx.StaticText(self.panel, label=_("El recordatorio '{}' tiene tareas pendientes. ¿Qué deseas hacer?").format(message))
+		sizer.Add(label, 0, wx.ALL | wx.EXPAND, 10)
+
+		button_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+		# Translators: Button to delete the reminder anyway.
+		delete_button = wx.Button(self.panel, ID_DELETE, _("Eliminar de todos modos"))
+		# Translators: Button to review tasks, which also snoozes the reminder for 10 minutes.
+		review_button = wx.Button(self.panel, ID_REVIEW_SNOOZE, _("Revisar tareas (posponer 10 min)"))
+		# Translators: Button to open another dialog to choose a custom snooze time.
+		snooze_button = wx.Button(self.panel, ID_SNOOZE, _("Posponer..."))
+
+		button_sizer.Add(delete_button, 0, wx.ALL, 5)
+		button_sizer.Add(review_button, 0, wx.ALL, 5)
+		button_sizer.Add(snooze_button, 0, wx.ALL, 5)
+
+		sizer.Add(button_sizer, 0, wx.CENTER)
+		self.panel.SetSizer(sizer)
+
+		delete_button.Bind(wx.EVT_BUTTON, lambda evt: self.EndModal(ID_DELETE))
+		review_button.Bind(wx.EVT_BUTTON, lambda evt: self.EndModal(ID_REVIEW_SNOOZE))
+		snooze_button.Bind(wx.EVT_BUTTON, lambda evt: self.EndModal(ID_SNOOZE))
 
 class remindersConfigPanel(settingsDialogs.SettingsPanel):
 	#Translators: Título de la ventana para la configuración del complemento.
@@ -899,4 +1443,3 @@ class remindersConfigPanel(settingsDialogs.SettingsPanel):
 	def onSave(self):
 		config.conf["remindersConfig"]["numberOfTimesToNotifyReminder"] = int(self.numberOfTimesToNotifyReminder.GetStringSelection())
 		config.conf["remindersConfig"]["notificationInterval"] = int(self.notificationInterval.GetStringSelection())
-

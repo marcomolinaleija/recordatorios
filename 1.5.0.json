@@ -1,0 +1,29 @@
+{
+	"addonId": "recordatorios",
+	"displayName": "Recordatorios",
+	"URL": "",
+	"description": "Complemento para crear, mirar y eliminar recordatorios.",
+	"sha256": "9f817b26d521c2edc00fcb5bd6a0722806478b06aa00fa932d2c0215df28078d",
+	"homepage": "https://github.com/marcomolinaleija/recordatorios",
+	"addonVersionName": "1.5",
+	"addonVersionNumber": {
+		"major": 1,
+		"minor": 5,
+		"patch": 0
+	},
+	"minNVDAVersion": {
+		"major": 2023,
+		"minor": 1,
+		"patch": 0
+	},
+	"lastTestedVersion": {
+		"major": 2024,
+		"minor": 4,
+		"patch": 1
+	},
+	"channel": "stable",
+	"publisher": "",
+	"sourceURL": "https://github.com/marcomolinaleija/recordatorios",
+	"license": "GPL 3",
+	"licenseURL": "https://www.gnu.org/licenses/gpl-3.0.html"
+}
