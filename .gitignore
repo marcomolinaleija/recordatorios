@@ -150,7 +150,7 @@ dmypy.json
 
 # pytype static type analyzer
 .pytype/
-
+*.nvda-addon
 # Cython debug symbols
 cython_debug/
 
