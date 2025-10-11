@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" type="text/css" href="../style.css" media="screen">
+<title>Recordatorios 1.4</title>
+</head>
+<body>
+<h1>Complemento Recordatorios para NVDA</h1>
+<p>Este complemento permite a los usuarios añadir recordatorios de manera sencilla, recibiendo notificaciones mediante un sonido de NVDA o sonidos personalizados cuando llegue la hora programada.</p>
+<h2>Funcionalidades principales</h2>
+<ul>
+<li>Crear recordatorios con mensajes personalizados y listas de tareas.</li>
+<li>Programar recordatorios para fechas y horas específicas.</li>
+<li>Configurar recordatorios recurrentes (diarios, semanales, mensuales o personalizados).</li>
+<li>Utilizar sonidos personalizados para las notificaciones.</li>
+<li>Administrar fácilmente los recordatorios activos (ver, eliminar, reprogramar y gestionar tareas).</li>
+<li>Diálogo interactivo para recordatorios con tareas pendientes, con opciones para posponer o eliminar.</li>
+</ul>
+<h2>Uso del complemento</h2>
+<p>El complemento añade un submenú "Recordatorios" en el menú Herramientas de NVDA y permite asignar gestos de entrada para las siguientes acciones:</p>
+<h3>1. Añadir un nuevo recordatorio</h3>
+<p>Esta opción abre la ventana de configuración para añadir uno o más recordatorios. Al abrir la ventana, el foco se situará automáticamente en el campo para escribir el mensaje del recordatorio.</p>
+<h4>Configuración del recordatorio:</h4>
+<ul>
+<li><strong>Mensaje</strong>: Introduce el texto que deseas recibir como recordatorio.</li>
+<li><strong>Tareas</strong>: En el campo multilínea, puedes añadir tareas asociadas, una por línea.</li>
+<li><strong>Selección de fecha</strong> (opcional):<ul>
+<li>Marca la casilla de verificación para programar el recordatorio en un día específico.</li>
+<li>Al activarla, aparecerá un selector de fecha donde podrás elegir el día deseado.</li>
+<li>Utiliza las flechas izquierda/derecha para moverte entre día, mes y año.</li>
+<li>Utiliza las flechas arriba/abajo para modificar los valores.</li>
+</ul>
+</li>
+<li><strong>Hora</strong>: Selecciona la hora en formato 24 horas.</li>
+<li><strong>Minutos</strong>: Selecciona los minutos.</li>
+<li><strong>Recordatorio recurrente</strong>:<ul>
+<li>Marca esta casilla si deseas que el recordatorio se repita.</li>
+<li>Al activarla, aparecerá un cuadro combinado donde podrás seleccionar la frecuencia: diaria, semanal, mensual o personalizada.</li>
+</ul>
+</li>
+<li><strong>Sonido personalizado</strong>:<ul>
+<li>Marca esta casilla si deseas usar un sonido diferente al estándar de NVDA.</li>
+<li>Al activarla, se mostrarán las opciones para seleccionar una carpeta de sonidos, elegir un archivo <code>.wav</code> y reproducirlo.</li>
+</ul>
+</li>
+</ul>
+<p>Una vez configurado todo, pulsa el botón "Agregar recordatorio" para guardarlo.</p>
+<h3>2. Consultar, eliminar, reprogramar y gestionar tareas</h3>
+<p>Desde el submenú "Recordatorios" en Herramientas, tienes acceso a:</p>
+<ul>
+<li><strong>Ver Recordatorios Activos</strong>: Muestra una ventana explorable con todos los detalles de tus recordatorios, incluyendo el tiempo restante y el estado de las tareas.</li>
+<li><strong>Eliminar Recordatorio</strong>: Abre un diálogo para seleccionar y eliminar los recordatorios que ya no necesites.</li>
+<li><strong>Reprogramar Recordatorio</strong>: Permite elegir un recordatorio y asignarle una nueva fecha y hora.</li>
+<li><strong>Gestionar Tareas</strong>: Abre un diálogo para marcar o desmarcar las tareas de un recordatorio como completadas.</li>
+</ul>
+<h3>3. Manejo de Tareas Incompletas (¡Nuevo!)</h3>
+<p>Cuando un recordatorio <strong>no recurrente</strong> llega a su hora y tiene tareas sin completar, ya no se elimina automáticamente. En su lugar, aparece un nuevo diálogo con las siguientes opciones:</p>
+<ul>
+<li><strong>Eliminar de todos modos</strong>: Descarta el recordatorio permanentemente.</li>
+<li><strong>Revisar tareas (posponer 10 min)</strong>: Pospone el recordatorio por 10 minutos, dándote tiempo para gestionar las tareas desde el menú "Herramientas".</li>
+<li><strong>Posponer...</strong>: Abre un segundo diálogo donde puedes introducir un número de minutos personalizado para posponer el recordatorio.</li>
+</ul>
+<p>Si cierras el diálogo sin elegir una opción, el recordatorio se guarda para que no pierdas la información.</p>
+<h2>Configuración del complemento</h2>
+<p>En el menú Preferencias &gt; Opciones de NVDA, encontrarás una nueva categoría llamada "Configuración de Recordatorios" con las siguientes opciones:</p>
+<ul>
+<li><strong>Número de notificaciones</strong>: Define cuántas veces se repetirá la notificación de cada recordatorio.</li>
+<li><strong>Intervalo de notificaciones</strong>: Establece el tiempo en segundos entre notificaciones consecutivas.</li>
+</ul>
+<h2>Sugerencias y contacto</h2>
+<p>Si deseas hacer alguna sugerencia para mejorar el complemento, puedes enviar un correo a la siguiente dirección:
+<a href="mailto:contacto@marco-ml.com">contacto@marco-ml.com</a></p>
+<h2>Historial de versiones</h2>
+<ul>
+<li><strong>Versión 1.4</strong>: Manejo mejorado para recordatorios con tareas incompletas. Ahora, cuando un recordatorio no recurrente con tareas pendientes llega a su hora, se muestra un diálogo con opciones para eliminar, posponer por 10 minutos, o posponer por un tiempo personalizado, evitando que se elimine automáticamente.</li>
+<li><strong>Versión 1.3</strong>: Implementación de recordatorios para fechas específicas.</li>
+<li><strong>Versión 1.2</strong>: Preparación del complemento para su distribución en la tienda de nvda.es.</li>
+<li><strong>Versión 1.1</strong>: Añadida la personalización de la recurrencia de los recordatorios (en minutos).</li>
+<li><strong>Versión 1.0</strong>: Versión inicial con todas las funcionalidades básicas.</li>
+</ul>
+</body>
+</html>

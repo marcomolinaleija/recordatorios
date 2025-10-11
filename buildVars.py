@@ -25,7 +25,7 @@ addon_info = {
 	# Translators: Long description to be shown for this add-on on add-on information from add-ons manager
 	"addon_description": _("""Complemento para crear, mirar y eliminar recordatorios."""),
 	# version
-	"addon_version": "1.5",
+	"addon_version": "1.4",
 	# Author(s)
 	"addon_author": "Marco leija <marcoleija@marco-ml.com>",
 	# URL for the add-on documentation support
