@@ -3,7 +3,7 @@
 # Consulte el archivo COPYING.txt para obtener más detalles.
 # Copyright (C) 2024 Marco Leija <marcomolinaleija@hotmail.com>
 
-"""Ventana principal para añadir un nuevo recordatorio."""
+"""Ventana para crear o editar un recordatorio."""
 
 import json
 import os
@@ -14,32 +14,49 @@ import wx.adv
 
 import addonHandler
 import globalVars
+import gui
 import ui
 from nvwave import playWaveFile
 
 addonHandler.initTranslation()
 
-from ..constants import TASK_REMINDER_LABEL
+from ..constants import REMINDER_UPDATED_MESSAGE, REMINDER_UPDATED_TITLE, TASK_REMINDER_LABEL
 from ..recurrence import RECURRENCE_CUSTOM, RECURRENCE_KEYS, recurrence_labels
 
 
 class ReminderApp(wx.Frame):
-    """Ventana principal para añadir un recordatorio."""
+    """Ventana para añadir o editar un recordatorio.
 
-    def __init__(self, reminder_manager, *args, **kwargs):
+    Si se pasa `reminder_to_edit=(index, reminder_dict)`, la ventana abre en modo edición:
+    pre-rellena los campos, cambia el título y la etiqueta del botón, y al guardar
+    llama a `update_reminder` en lugar de `add_reminder`.
+    """
+
+    def __init__(self, reminder_manager, *args, reminder_to_edit=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.SetTitle(_("Añadir recordatorio"))
-        self.SetSize((400, 550))
         self.reminder_manager = reminder_manager
+        self._edit_target = reminder_to_edit  # tuple (index, reminder_dict) o None
         self.sound_folder = None
         self.selected_sound = None
+
+        if reminder_to_edit:
+            self.SetTitle(_("Editar recordatorio"))
+        else:
+            self.SetTitle(_("Añadir recordatorio"))
+        self.SetSize((420, 620))
 
         self.panel = wx.Panel(self)
         self._create_interface()
         self._setup_accelerators()
         self.Bind(wx.EVT_CLOSE, self.close)
-        self.date_picker.SetValue(wx.DateTime.Now())
+
+        if reminder_to_edit is None:
+            self.date_picker.SetValue(wx.DateTime.Now())
+
         self._load_sound_config()
+
+        if reminder_to_edit is not None:
+            self._populate_from_reminder(reminder_to_edit[1])
 
     # --- Persistencia de la configuración de sonidos ---
 
@@ -121,6 +138,11 @@ class ReminderApp(wx.Frame):
         self.minutes_field = wx.ComboBox(self.panel, choices=[str(i).zfill(2) for i in range(60)], style=wx.CB_DROPDOWN)
         sizer.Add(self.minutes_field, 0, wx.ALL | wx.EXPAND, 5)
 
+        # Translators: Etiqueta para el campo de pre-notificación (avisar X minutos antes).
+        sizer.Add(wx.StaticText(self.panel, label=_("Avisar X minutos antes (vac&ío para no usar):")), 0, wx.ALL | wx.EXPAND, 5)
+        self.pre_notification_field = wx.TextCtrl(self.panel)
+        sizer.Add(self.pre_notification_field, 0, wx.ALL | wx.EXPAND, 5)
+
         # Translators: Casilla para marcar el recordatorio como recurrente.
         self.recurrence_check = wx.CheckBox(self.panel, label=_("&Recordatorio recurrente"))
         sizer.Add(self.recurrence_check, 0, wx.ALL | wx.EXPAND, 5)
@@ -170,10 +192,15 @@ class ReminderApp(wx.Frame):
         self.select_folder_btn.Bind(wx.EVT_BUTTON, self._on_select_folder)
         self.select_folder_btn.Hide()
 
-        # Translators: Botón para guardar el recordatorio.
-        add_button = wx.Button(self.panel, label=_("&Agregar Recordatorio"))
-        sizer.Add(add_button, 0, wx.ALL | wx.CENTER, 5)
-        add_button.Bind(wx.EVT_BUTTON, self._on_add_reminder)
+        if self._edit_target is not None:
+            # Translators: Botón para guardar los cambios al editar un recordatorio.
+            submit_label = _("&Guardar cambios")
+        else:
+            # Translators: Botón para añadir el recordatorio.
+            submit_label = _("&Agregar Recordatorio")
+        self.submit_button = wx.Button(self.panel, label=submit_label)
+        sizer.Add(self.submit_button, 0, wx.ALL | wx.CENTER, 5)
+        self.submit_button.Bind(wx.EVT_BUTTON, self._on_submit)
 
         # Translators: Botón de donación.
         donate_button = wx.Button(self.panel, label=_("&Donar al desarrollador del complemento"))
@@ -202,6 +229,71 @@ class ReminderApp(wx.Frame):
             (wx.ACCEL_CTRL, ord("Q"), close_window),
             (wx.ACCEL_NORMAL, wx.WXK_ESCAPE, close_window_esc),
         ]))
+
+    # --- Rellenado de campos en modo edición ---
+
+    def _populate_from_reminder(self, reminder):
+        """Pre-rellena el formulario con los valores actuales del recordatorio."""
+        # Mensaje.
+        self.message_field.SetValue(reminder.get("message", ""))
+
+        # Tareas, una por línea.
+        tasks = reminder.get("tasks") or []
+        if tasks:
+            self.tasks_field.SetValue("\n".join(t.get("description", "") for t in tasks))
+
+        # Fecha y hora.
+        reminder_time = reminder["time"]
+        wx_date = wx.DateTime()
+        # wx.DateTime usa meses indexados en 0.
+        wx_date.Set(reminder_time.day, reminder_time.month - 1, reminder_time.year)
+        self.date_picker.SetValue(wx_date)
+        self.specific_date_check.SetValue(True)
+        self.date_picker.Show()
+        self.date_label.Show()
+        self.hours_field.SetSelection(reminder_time.hour)
+        self.minutes_field.SetSelection(reminder_time.minute)
+
+        # Pre-notificación.
+        pre_min = reminder.get("pre_notification_minutes")
+        if pre_min:
+            self.pre_notification_field.SetValue(str(pre_min))
+
+        # Recurrencia.
+        recurrence = reminder.get("recurrence")
+        custom_interval = reminder.get("custom_interval")
+        if recurrence in RECURRENCE_KEYS or custom_interval:
+            self.recurrence_check.SetValue(True)
+            self.recurrence_choice.Show()
+            self.recurrence_label.Show()
+            if recurrence in RECURRENCE_KEYS:
+                self.recurrence_choice.SetSelection(RECURRENCE_KEYS.index(recurrence))
+            elif custom_interval:
+                self.recurrence_choice.SetSelection(RECURRENCE_KEYS.index(RECURRENCE_CUSTOM))
+            if custom_interval:
+                self.custom_interval_field.SetValue(str(custom_interval))
+                self.custom_interval_field.Show()
+                self.custom_interval_label.Show()
+
+        # Sonido personalizado.
+        sound_file = reminder.get("sound_file")
+        if sound_file and os.path.exists(sound_file):
+            self.custom_sound_check.SetValue(True)
+            self.select_folder_btn.Show()
+            self.play_button.Show()
+            self.sound_choice.Show()
+            self.select_sound_label.Show()
+            # Si el archivo viene de una carpeta distinta a la guardada, cargarla.
+            folder = os.path.dirname(sound_file)
+            if folder and folder != self.sound_folder:
+                self.sound_folder = folder
+                self._load_sounds_from_folder()
+            basename = os.path.basename(sound_file)
+            if basename in self.sound_choice.GetItems():
+                self.sound_choice.SetStringSelection(basename)
+            self.selected_sound = sound_file
+
+        self.panel.Layout()
 
     # --- Manejadores de eventos ---
 
@@ -306,7 +398,8 @@ class ReminderApp(wx.Frame):
         if os.path.exists(sound_path):
             playWaveFile(sound_path)
 
-    def _on_add_reminder(self, event):
+    def _on_submit(self, event):
+        # --- Validación de intervalo personalizado ---
         custom_interval = None
         raw_interval = self.custom_interval_field.GetValue().strip()
         if raw_interval:
@@ -318,6 +411,20 @@ class ReminderApp(wx.Frame):
                 # Translators: Error: el intervalo personalizado debe ser entero positivo.
                 wx.MessageBox(_("El intervalo personalizado debe ser un número entero positivo."), _("Error"), wx.ICON_ERROR)
                 self.custom_interval_field.SetFocus()
+                return
+
+        # --- Validación de pre-notificación ---
+        pre_notification_minutes = None
+        raw_pre = self.pre_notification_field.GetValue().strip()
+        if raw_pre:
+            try:
+                pre_notification_minutes = int(raw_pre)
+                if pre_notification_minutes <= 0:
+                    raise ValueError
+            except ValueError:
+                # Translators: Error: el pre-aviso debe ser entero positivo.
+                wx.MessageBox(_("El pre-aviso debe ser un número entero positivo de minutos."), _("Error"), wx.ICON_ERROR)
+                self.pre_notification_field.SetFocus()
                 return
 
         message = self.message_field.GetValue().strip()
@@ -382,18 +489,47 @@ class ReminderApp(wx.Frame):
         else:
             custom_interval = None
 
-        if self.custom_sound_check.IsChecked() and self.sound_choice.GetValue():
+        if self.custom_sound_check.IsChecked() and self.sound_choice.GetValue() and self.sound_folder:
             self.selected_sound = os.path.join(self.sound_folder, self.sound_choice.GetValue())
         else:
             self.selected_sound = None
 
+        # --- Diferenciar añadir vs editar ---
+        if self._edit_target is not None:
+            index, original = self._edit_target
+            # Si cambia el mensaje, verificar duplicados contra los demás.
+            if message.lower() != original["message"].lower() and self.reminder_manager.has_duplicate_message(message, ignore_index=index):
+                wx.MessageBox(_("Ya existe un recordatorio con el nombre '{}'").format(message), _("Error"), wx.ICON_ERROR)
+                self.message_field.SetFocus()
+                return
+
+            updated = self.reminder_manager.update_reminder(
+                index,
+                message=message,
+                time=reminder_time,
+                recurrence=recurrence,
+                sound_file=self.selected_sound,
+                custom_interval=custom_interval,
+                tasks=tasks,
+                pre_notification_minutes=pre_notification_minutes,
+            )
+            if updated:
+                gui.messageBox(REMINDER_UPDATED_MESSAGE.format(message), REMINDER_UPDATED_TITLE)
+                self.Destroy()
+            else:
+                # Translators: Error genérico al actualizar un recordatorio.
+                wx.MessageBox(_("No se pudo actualizar el recordatorio."), _("Error"), wx.ICON_ERROR)
+            return
+
+        # Modo "añadir".
         self.reminder_manager.add_reminder(
             message, reminder_time, recurrence,
             self.selected_sound, custom_interval, tasks,
+            pre_notification_minutes=pre_notification_minutes,
         )
-
         self.message_field.Clear()
         self.tasks_field.Clear()
+        self.pre_notification_field.Clear()
         self.hours_field.SetSelection(-1)
         self.minutes_field.SetSelection(-1)
         self.recurrence_check.SetValue(False)

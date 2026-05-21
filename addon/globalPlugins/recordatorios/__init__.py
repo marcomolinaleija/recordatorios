@@ -23,8 +23,11 @@ addonHandler.initTranslation()
 from .constants import (
     DELETE_REMINDER_MESSAGE,
     DELETE_REMINDER_TITLE,
+    EDIT_REMINDER_MESSAGE,
+    EDIT_REMINDER_TITLE,
     MANAGE_TASKS_MESSAGE,
     MANAGE_TASKS_TITLE,
+    NO_REMINDERS_TO_EDIT_MESSAGE,
     NO_REMINDERS_TO_RESCHEDULE_MESSAGE,
     NO_REMINDERS_WITH_TASKS_MESSAGE,
     REMINDER_DELETED_MESSAGE,
@@ -83,6 +86,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             (_("Añadir Recordatorio"), self._open_reminder_window),
             # Translators: Ítem del submenú para ver los recordatorios activos.
             (_("Ver Recordatorios Activos"), self._check_active_reminders),
+            # Translators: Ítem del submenú para editar un recordatorio existente.
+            (_("Editar Recordatorio"), self._edit_reminder),
             # Translators: Ítem del submenú para eliminar un recordatorio.
             (_("Eliminar Recordatorio"), self._delete_reminder),
             # Translators: Ítem del submenú para reprogramar un recordatorio.
@@ -159,26 +164,21 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         now = datetime.now()
         return [
             "{n}: {msg} ({when})".format(
-                n=i + 1, msg=reminder[0], when=self._format_when(reminder[1], now),
+                n=i + 1, msg=reminder["message"], when=self._format_when(reminder["time"], now),
             )
             for i, reminder in enumerate(reminders)
         ]
 
     # --- Acciones del menú ---
 
-    def _open_reminder_window(self, event):
+    def _open_reminder_window(self, event, reminder_to_edit=None):
         if self._frame:
             try:
                 if self._frame.IsShown():
-                    self._frame.Raise()
-                    return
+                    self._frame.Destroy()
             except RuntimeError:
                 pass
-            try:
-                self._frame.Destroy()
-            except RuntimeError:
-                pass
-        self._frame = ReminderApp(self.reminder_manager, None)
+        self._frame = ReminderApp(self.reminder_manager, None, reminder_to_edit=reminder_to_edit)
         self._frame.Show()
 
     def _check_active_reminders(self, event):
@@ -191,19 +191,26 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         now = datetime.now()
         html_parts = []
         for reminder in reminders:
-            message, reminder_time, recurrence, _sound, _interval, tasks = reminder
-            part = "<h2>{msg}</h2>".format(msg=message)
+            part = "<h2>{msg}</h2>".format(msg=reminder["message"])
             # Translators: Etiqueta "Fecha" en la vista de recordatorios activos.
             part += "<p>{label}: {when}{rec}</p>".format(
                 label=_("Fecha"),
-                when=self._format_when(reminder_time, now),
-                rec=self._recurrence_text(recurrence),
+                when=self._format_when(reminder["time"], now),
+                rec=self._recurrence_text(reminder["recurrence"]),
             )
             # Translators: Etiqueta "Tiempo restante" en la vista de recordatorios activos.
             part += "<p>{label}: {remaining}</p>".format(
                 label=_("Tiempo restante"),
-                remaining=self._format_time_remaining(reminder_time),
+                remaining=self._format_time_remaining(reminder["time"]),
             )
+            pre_min = reminder.get("pre_notification_minutes")
+            if pre_min:
+                # Translators: Indica los minutos de pre-aviso configurados para un recordatorio.
+                part += "<p>{label}: {minutes}</p>".format(
+                    label=_("Pre-aviso (minutos antes)"),
+                    minutes=pre_min,
+                )
+            tasks = reminder.get("tasks") or []
             if tasks:
                 # Translators: Encabezado "Tareas" en la vista de recordatorios activos.
                 part += "<h3>{label}:</h3><ol>".format(label=_("Tareas"))
@@ -237,9 +244,32 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 # Translators: El recordatorio ya no existe.
                 gui.messageBox(_("El recordatorio seleccionado ya no existe."), _("Error"), wx.ICON_ERROR)
                 return
-            gui.messageBox(REMINDER_DELETED_MESSAGE.format(removed[0]), REMINDER_DELETED_TITLE)
+            gui.messageBox(REMINDER_DELETED_MESSAGE.format(removed["message"]), REMINDER_DELETED_TITLE)
         finally:
             dlg.Destroy()
+
+    def _edit_reminder(self, event):
+        reminders = self.reminder_manager.snapshot()
+        if not reminders:
+            ui.message(NO_REMINDERS_TO_EDIT_MESSAGE)
+            return
+
+        dlg = wx.SingleChoiceDialog(
+            gui.mainFrame, EDIT_REMINDER_MESSAGE, EDIT_REMINDER_TITLE,
+            self._build_options(reminders),
+        )
+        try:
+            if dlg.ShowModal() != wx.ID_OK:
+                return
+            selection = dlg.GetSelection()
+            if not (0 <= selection < len(reminders)):
+                gui.messageBox(_("El recordatorio seleccionado ya no existe."), _("Error"), wx.ICON_ERROR)
+                return
+            reminder = reminders[selection]
+        finally:
+            dlg.Destroy()
+
+        self._open_reminder_window(None, reminder_to_edit=(selection, reminder))
 
     def _reschedule_reminder(self, event):
         reminders = self.reminder_manager.snapshot()
@@ -259,16 +289,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 gui.messageBox(_("El recordatorio seleccionado ya no existe."), _("Error"), wx.ICON_ERROR)
                 return
             original = reminders[selection]
-            original_message = original[0]
-            original_time = original[1]
-            original_recurrence = original[2]
-            original_sound = original[3]
-            original_interval = original[4]
-            original_tasks = original[5]
         finally:
             dlg.Destroy()
 
-        reschedule_dlg = RescheduleReminderDialog(gui.mainFrame, original_message, original_time)
+        reschedule_dlg = RescheduleReminderDialog(gui.mainFrame, original["message"], original["time"])
         try:
             if reschedule_dlg.ShowModal() != wx.ID_OK:
                 return
@@ -287,13 +311,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 # Translators: Error: la nueva fecha es en el pasado.
                 gui.messageBox(_("La nueva fecha y hora seleccionadas están en el pasado. Por favor, selecciona una fecha y hora futura."), _("Error"), wx.ICON_ERROR)
                 return
-            if self.reminder_manager.update_reminder(
-                selection, new_time, original_recurrence,
-                original_sound, original_interval, original_tasks,
-            ):
+            if self.reminder_manager.update_reminder(selection, time=new_time):
                 gui.messageBox(
                     REMINDER_RESCHEDULED_MESSAGE.format(
-                        original_message,
+                        original["message"],
                         date=new_time.strftime('%d/%m/%Y'),
                         time=new_time.strftime('%H:%M'),
                     ),
@@ -307,7 +328,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def _manage_tasks(self, event):
         reminders = self.reminder_manager.snapshot()
-        with_tasks = [(i, r) for i, r in enumerate(reminders) if r[5]]
+        with_tasks = [(i, r) for i, r in enumerate(reminders) if r.get("tasks")]
         if not with_tasks:
             ui.message(NO_REMINDERS_WITH_TASKS_MESSAGE)
             return
@@ -319,17 +340,17 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 return
             selection_in_filtered = dlg.GetSelection()
             original_index, reminder = with_tasks[selection_in_filtered]
-            message, reminder_time, recurrence, sound, interval, tasks = reminder
         finally:
             dlg.Destroy()
 
-        manage_dlg = ManageTasksDialog(gui.mainFrame, message, tasks)
+        manage_dlg = ManageTasksDialog(gui.mainFrame, reminder["message"], reminder.get("tasks") or [])
         try:
             if manage_dlg.ShowModal() != wx.ID_OK:
                 return
             if self.reminder_manager.update_reminder(
-                original_index, reminder_time, recurrence,
-                sound, interval, manage_dlg.modified_tasks,
+                original_index,
+                tasks=manage_dlg.modified_tasks,
+                pre_notified=reminder.get("pre_notified", False),
             ):
                 ui.message(UPDATE_TASKS_MESSAGE)
             else:
@@ -367,6 +388,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     )
     def script_open_delete_dialog(self, gesture):
         wx.CallAfter(self._delete_reminder, None)
+
+    @scriptHandler.script(
+        # Translators: Descripción del gesto para abrir el diálogo de editar.
+        description=_("Lanza el diálogo para editar un recordatorio"),
+        category=_("Recordatorios"),
+        gesture=None,
+    )
+    def script_open_edit_dialog(self, gesture):
+        wx.CallAfter(self._edit_reminder, None)
 
     @scriptHandler.script(
         # Translators: Descripción del gesto para abrir el diálogo de reprogramar.

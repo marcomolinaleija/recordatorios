@@ -25,6 +25,13 @@ REMINDER_RESCHEDULED_MESSAGE = _("El recordatorio '{}' ha sido reprogramado para
 REMINDER_RESCHEDULED_TITLE = _("Recordatorio reprogramado")
 NO_REMINDERS_TO_RESCHEDULE_MESSAGE = _("No hay recordatorios para reprogramar.")
 
+# --- Mensajes de edición completa ---
+EDIT_REMINDER_MESSAGE = _("Selecciona el recordatorio que deseas editar:")
+EDIT_REMINDER_TITLE = _("Editar recordatorio")
+REMINDER_UPDATED_MESSAGE = _("El recordatorio '{}' ha sido actualizado correctamente.")
+REMINDER_UPDATED_TITLE = _("Recordatorio actualizado")
+NO_REMINDERS_TO_EDIT_MESSAGE = _("No hay recordatorios para editar.")
+
 # --- Mensajes de tareas ---
 TASK_REMINDER_LABEL = _("&Tareas (una por línea):")
 TASK_COMPLETED_STATUS = _("[Completada]")
