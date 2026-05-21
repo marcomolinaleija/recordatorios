@@ -59,8 +59,18 @@ import os
 # For more information on SCons Glob expressions please take a look at:
 # https://scons.org/doc/production/HTML/scons-user/apd.html
 pythonSources = [
-    'addon/globalPlugins/recordatorios.py',
-    'addon/installTasks.py'
+    'addon/globalPlugins/recordatorios/__init__.py',
+    'addon/globalPlugins/recordatorios/constants.py',
+    'addon/globalPlugins/recordatorios/recurrence.py',
+    'addon/globalPlugins/recordatorios/manager.py',
+    'addon/globalPlugins/recordatorios/ui/__init__.py',
+    'addon/globalPlugins/recordatorios/ui/reminder_app.py',
+    'addon/globalPlugins/recordatorios/ui/reschedule_dialog.py',
+    'addon/globalPlugins/recordatorios/ui/tasks_dialog.py',
+    'addon/globalPlugins/recordatorios/ui/snooze_dialog.py',
+    'addon/globalPlugins/recordatorios/ui/incomplete_task_dialog.py',
+    'addon/globalPlugins/recordatorios/ui/config_panel.py',
+    'addon/installTasks.py',
 ]
 
 # Files that contain strings for translation. Usually your python sources
