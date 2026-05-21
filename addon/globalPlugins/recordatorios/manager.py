@@ -263,9 +263,9 @@ class ReminderManager:
 
     def _show_incomplete_task_dialog(self, reminder):
         """Diálogo en el hilo de UI para gestionar un recordatorio no recurrente con pendientes."""
-        # Importación local para evitar dependencia circular con el paquete `ui`.
-        from .ui.incomplete_task_dialog import IncompleteTaskDialog
-        from .ui.snooze_dialog import SnoozeDialog
+        # Importación local para evitar dependencia circular con el subpaquete de widgets.
+        from .widgets.incomplete_task_dialog import IncompleteTaskDialog
+        from .widgets.snooze_dialog import SnoozeDialog
 
         message = reminder["message"]
         dialog = IncompleteTaskDialog(gui.mainFrame, message)

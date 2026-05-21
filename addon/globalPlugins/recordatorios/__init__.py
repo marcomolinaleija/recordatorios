@@ -42,10 +42,10 @@ from .constants import (
 )
 from .manager import ReminderManager
 from .recurrence import RECURRENCE_KEYS, recurrence_labels
-from .ui.config_panel import remindersConfigPanel
-from .ui.reminder_app import ReminderApp
-from .ui.reschedule_dialog import RescheduleReminderDialog
-from .ui.tasks_dialog import ManageTasksDialog
+from .widgets.config_panel import remindersConfigPanel
+from .widgets.reminder_app import ReminderApp
+from .widgets.reschedule_dialog import RescheduleReminderDialog
+from .widgets.tasks_dialog import ManageTasksDialog
 
 
 def disableInSecureMode(decoratedCls):
