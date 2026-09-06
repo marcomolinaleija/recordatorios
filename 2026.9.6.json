@@ -3,13 +3,13 @@
 	"displayName": "Recordatorios",
 	"URL": "",
 	"description": "Complemento para crear, mirar y eliminar recordatorios.",
-	"sha256": "c459907d6d77c747d4d759193a8bf1c40cbcea7321682340ae8502bbe3426269",
+	"sha256": "685c3b83f7095f82e8f09d4f2b33d3bfcebb26d40eee5cfe3b14a3c2fdb8657f",
 	"homepage": "https://github.com/marcomolinaleija/recordatorios",
-	"addonVersionName": "2026.05.21",
+	"addonVersionName": "2026.09.06",
 	"addonVersionNumber": {
 		"major": 2026,
-		"minor": 5,
-		"patch": 21
+		"minor": 9,
+		"patch": 6
 	},
 	"minNVDAVersion": {
 		"major": 2023,

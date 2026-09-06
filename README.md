@@ -76,7 +76,7 @@ Si deseas hacer alguna sugerencia para mejorar el complemento, puedes enviar un 
 
 ## Historial de versiones
 
-* **Versión 2026.05.21**: Se añade edición completa de recordatorios y preavisos opcionales. También se mejora la robustez de la persistencia, de los recordatorios recurrentes atrasados y de la gestión de tareas pendientes.
+* **Versión 2026.09.06**: Se añade edición completa de recordatorios y preavisos opcionales. También se mejora la robustez de la persistencia, de los recordatorios recurrentes atrasados y de la gestión de tareas pendientes.
 * **Versión 1.4**: Manejo mejorado para recordatorios con tareas incompletas. Ahora, cuando un recordatorio no recurrente con tareas pendientes llega a su hora, se muestra un diálogo con opciones para eliminar, posponer por 10 minutos, o posponer por un tiempo personalizado, evitando que se elimine automáticamente.
 * **Versión 1.3**: Implementación de recordatorios para fechas específicas.
 * **Versión 1.2**: Preparación del complemento para su distribución en la tienda de nvda.es.
