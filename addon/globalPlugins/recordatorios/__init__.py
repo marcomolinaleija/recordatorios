@@ -6,6 +6,7 @@
 """Punto de entrada del complemento. Registra `GlobalPlugin` y conecta las acciones del menú."""
 
 from datetime import datetime
+from html import escape
 
 import wx
 
@@ -66,6 +67,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         settingsDialogs.NVDASettingsDialog.categoryClasses.append(remindersConfigPanel)
         self.reminder_manager = ReminderManager()
         self._frame = None
+        self._tools_menu_item = None
+        self._menu_bindings = []
         self._add_to_tools_menu()
 
     def terminate(self, *args, **kwargs):
@@ -76,6 +79,16 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             pass
         if getattr(self, "reminder_manager", None):
             self.reminder_manager.stop()
+        for item, handler in self._menu_bindings:
+            gui.mainFrame.sysTrayIcon.Unbind(wx.EVT_MENU, id=item.GetId(), handler=handler)
+        self._menu_bindings = []
+        if self._tools_menu_item is not None:
+            try:
+                menu_item = gui.mainFrame.sysTrayIcon.toolsMenu.Remove(self._tools_menu_item)
+                menu_item.Destroy()
+            except RuntimeError:
+                pass
+            self._tools_menu_item = None
 
     def _add_to_tools_menu(self):
         tools_menu = gui.mainFrame.sysTrayIcon.toolsMenu
@@ -98,9 +111,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         for label, handler in items:
             item = sub_menu.Append(wx.ID_ANY, label)
             gui.mainFrame.sysTrayIcon.Bind(wx.EVT_MENU, handler, item)
+            self._menu_bindings.append((item, handler))
 
         # Translators: Nombre del submenú dentro del menú Herramientas.
-        tools_menu.AppendSubMenu(sub_menu, _("&Recordatorios"))
+        self._tools_menu_item = tools_menu.AppendSubMenu(sub_menu, _("&Recordatorios"))
 
     # --- Helpers de formato ---
 
@@ -191,7 +205,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         now = datetime.now()
         html_parts = []
         for reminder in reminders:
-            part = "<h2>{msg}</h2>".format(msg=reminder["message"])
+            part = "<h2>{msg}</h2>".format(msg=escape(reminder["message"]))
             # Translators: Etiqueta "Fecha" en la vista de recordatorios activos.
             part += "<p>{label}: {when}{rec}</p>".format(
                 label=_("Fecha"),
@@ -217,7 +231,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 for task in tasks:
                     status = TASK_COMPLETED_STATUS if task.get('completed') else TASK_PENDING_STATUS
                     part += "<li><strong>{status}</strong> {desc}</li>".format(
-                        status=status, desc=task.get('description', ''),
+                        status=escape(status), desc=escape(task.get('description', '')),
                     )
                 part += "</ol>"
             html_parts.append(part)
@@ -239,7 +253,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         try:
             if dlg.ShowModal() != wx.ID_OK:
                 return
-            removed = self.reminder_manager.remove_at(dlg.GetSelection())
+            removed = self.reminder_manager.remove(reminders[dlg.GetSelection()]["id"])
             if removed is None:
                 # Translators: El recordatorio ya no existe.
                 gui.messageBox(_("El recordatorio seleccionado ya no existe."), _("Error"), wx.ICON_ERROR)
@@ -269,7 +283,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         finally:
             dlg.Destroy()
 
-        self._open_reminder_window(None, reminder_to_edit=(selection, reminder))
+        self._open_reminder_window(None, reminder_to_edit=(reminder["id"], reminder))
 
     def _reschedule_reminder(self, event):
         reminders = self.reminder_manager.snapshot()
@@ -303,6 +317,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             except ValueError:
                 gui.messageBox(_("Las horas y minutos deben de ser números enteros válidos."), _("Error"), wx.ICON_ERROR)
                 return
+            if not (0 <= new_hours <= 23) or not (0 <= new_minutes <= 59):
+                gui.messageBox(_("Rango no válido. Las horas deben de estar entre 00 y 23, y los minutos entre 00 y 59."), _("Error"), wx.ICON_ERROR)
+                return
             new_time = datetime(
                 wx_date.GetYear(), wx_date.GetMonth() + 1, wx_date.GetDay(),
                 hour=new_hours, minute=new_minutes,
@@ -311,7 +328,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 # Translators: Error: la nueva fecha es en el pasado.
                 gui.messageBox(_("La nueva fecha y hora seleccionadas están en el pasado. Por favor, selecciona una fecha y hora futura."), _("Error"), wx.ICON_ERROR)
                 return
-            if self.reminder_manager.update_reminder(selection, time=new_time):
+            if self.reminder_manager.update_reminder(original["id"], time=new_time):
                 gui.messageBox(
                     REMINDER_RESCHEDULED_MESSAGE.format(
                         original["message"],
@@ -339,7 +356,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if dlg.ShowModal() != wx.ID_OK:
                 return
             selection_in_filtered = dlg.GetSelection()
-            original_index, reminder = with_tasks[selection_in_filtered]
+            _original_index, reminder = with_tasks[selection_in_filtered]
         finally:
             dlg.Destroy()
 
@@ -348,7 +365,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if manage_dlg.ShowModal() != wx.ID_OK:
                 return
             if self.reminder_manager.update_reminder(
-                original_index,
+                reminder["id"],
                 tasks=manage_dlg.modified_tasks,
                 pre_notified=reminder.get("pre_notified", False),
             ):

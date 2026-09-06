@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" type="text/css" href="../style.css" media="screen">
-<title>Recordatorios 1.4</title>
+<title>Recordatorios 2026.05.21</title>
 </head>
 <body>
 <h1>Complemento Recordatorios para NVDA</h1>
@@ -14,7 +14,9 @@
 <li>Programar recordatorios para fechas y horas específicas.</li>
 <li>Configurar recordatorios recurrentes (diarios, semanales, mensuales o personalizados).</li>
 <li>Utilizar sonidos personalizados para las notificaciones.</li>
-<li>Administrar fácilmente los recordatorios activos (ver, eliminar, reprogramar y gestionar tareas).</li>
+<li>Recibir un aviso anticipado opcional antes de que llegue el recordatorio.</li>
+<li>Editar por completo un recordatorio existente (mensaje, fecha, hora, tareas, sonido, recurrencia y pre-aviso).</li>
+<li>Administrar fácilmente los recordatorios activos (ver, editar, eliminar, reprogramar y gestionar tareas).</li>
 <li>Diálogo interactivo para recordatorios con tareas pendientes, con opciones para posponer o eliminar.</li>
 </ul>
 <h2>Uso del complemento</h2>
@@ -34,6 +36,7 @@
 </li>
 <li><strong>Hora</strong>: Selecciona la hora en formato 24 horas.</li>
 <li><strong>Minutos</strong>: Selecciona los minutos.</li>
+<li><strong>Avisar X minutos antes</strong> (opcional): Si introduces un número de minutos, NVDA emitirá un aviso anticipado con un beep agudo distinto cuando falten esos minutos para la hora del recordatorio. Deja el campo vacío para no usarlo.</li>
 <li><strong>Recordatorio recurrente</strong>:<ul>
 <li>Marca esta casilla si deseas que el recordatorio se repita.</li>
 <li>Al activarla, aparecerá un cuadro combinado donde podrás seleccionar la frecuencia: diaria, semanal, mensual o personalizada.</li>
@@ -49,9 +52,10 @@
 <h3>2. Consultar, eliminar, reprogramar y gestionar tareas</h3>
 <p>Desde el submenú "Recordatorios" en Herramientas, tienes acceso a:</p>
 <ul>
-<li><strong>Ver Recordatorios Activos</strong>: Muestra una ventana explorable con todos los detalles de tus recordatorios, incluyendo el tiempo restante y el estado de las tareas.</li>
+<li><strong>Ver Recordatorios Activos</strong>: Muestra una ventana explorable con todos los detalles de tus recordatorios, incluyendo el tiempo restante, el pre-aviso configurado y el estado de las tareas.</li>
+<li><strong>Editar Recordatorio</strong>: Abre el formulario con todos los campos del recordatorio pre-rellenados para modificar cualquier dato (mensaje, tareas, fecha, hora, recurrencia, sonido o pre-aviso).</li>
 <li><strong>Eliminar Recordatorio</strong>: Abre un diálogo para seleccionar y eliminar los recordatorios que ya no necesites.</li>
-<li><strong>Reprogramar Recordatorio</strong>: Permite elegir un recordatorio y asignarle una nueva fecha y hora.</li>
+<li><strong>Reprogramar Recordatorio</strong>: Permite elegir un recordatorio y asignarle una nueva fecha y hora. El diálogo se abre con los valores actuales del recordatorio.</li>
 <li><strong>Gestionar Tareas</strong>: Abre un diálogo para marcar o desmarcar las tareas de un recordatorio como completadas.</li>
 </ul>
 <h3>3. Manejo de Tareas Incompletas (¡Nuevo!)</h3>
@@ -73,6 +77,7 @@
 <a href="mailto:contacto@marco-ml.com">contacto@marco-ml.com</a></p>
 <h2>Historial de versiones</h2>
 <ul>
+<li><strong>Versión 2026.05.21</strong>: Se añade edición completa de recordatorios y preavisos opcionales. También se mejora la robustez de la persistencia, de los recordatorios recurrentes atrasados y de la gestión de tareas pendientes.</li>
 <li><strong>Versión 1.4</strong>: Manejo mejorado para recordatorios con tareas incompletas. Ahora, cuando un recordatorio no recurrente con tareas pendientes llega a su hora, se muestra un diálogo con opciones para eliminar, posponer por 10 minutos, o posponer por un tiempo personalizado, evitando que se elimine automáticamente.</li>
 <li><strong>Versión 1.3</strong>: Implementación de recordatorios para fechas específicas.</li>
 <li><strong>Versión 1.2</strong>: Preparación del complemento para su distribución en la tienda de nvda.es.</li>

@@ -60,17 +60,32 @@ def is_recurrent(recurrence, custom_interval):
     return recurrence in RECURRENCE_KEYS
 
 
-def next_occurrence(reminder_time, recurrence, custom_interval):
-    """Calcula la siguiente hora a la que debe activarse un recordatorio recurrente."""
+def next_occurrence(reminder_time, recurrence, custom_interval, after=None):
+    """Devuelve la siguiente ocurrencia estrictamente posterior a ``after``.
+
+    Al reiniciar NVDA, un recordatorio puede llevar varios periodos vencido. Avanzar
+    sólo un periodo provocaba una notificación por segundo hasta alcanzar el presente.
+    """
+    if after is None:
+        after = reminder_time
+
     if custom_interval:
-        return reminder_time + timedelta(minutes=custom_interval)
-    if recurrence == RECURRENCE_DAILY:
-        return reminder_time + timedelta(days=1)
-    if recurrence == RECURRENCE_WEEKLY:
-        return reminder_time + timedelta(weeks=1)
-    if recurrence == RECURRENCE_MONTHLY:
-        return add_month(reminder_time)
-    return reminder_time
+        interval = timedelta(minutes=custom_interval)
+        elapsed = after - reminder_time
+        periods = max(1, int(elapsed // interval) + 1)
+        return reminder_time + interval * periods
+
+    next_time = reminder_time
+    while next_time <= after:
+        if recurrence == RECURRENCE_DAILY:
+            next_time += timedelta(days=1)
+        elif recurrence == RECURRENCE_WEEKLY:
+            next_time += timedelta(weeks=1)
+        elif recurrence == RECURRENCE_MONTHLY:
+            next_time = add_month(next_time)
+        else:
+            return reminder_time
+    return next_time
 
 
 def add_month(date):

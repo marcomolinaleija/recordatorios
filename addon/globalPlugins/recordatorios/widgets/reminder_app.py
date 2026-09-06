@@ -496,15 +496,15 @@ class ReminderApp(wx.Frame):
 
         # --- Diferenciar añadir vs editar ---
         if self._edit_target is not None:
-            index, original = self._edit_target
+            reminder_id, original = self._edit_target
             # Si cambia el mensaje, verificar duplicados contra los demás.
-            if message.lower() != original["message"].lower() and self.reminder_manager.has_duplicate_message(message, ignore_index=index):
+            if message.lower() != original["message"].lower() and self.reminder_manager.has_duplicate_message(message, ignore_id=reminder_id):
                 wx.MessageBox(_("Ya existe un recordatorio con el nombre '{}'").format(message), _("Error"), wx.ICON_ERROR)
                 self.message_field.SetFocus()
                 return
 
             updated = self.reminder_manager.update_reminder(
-                index,
+                reminder_id,
                 message=message,
                 time=reminder_time,
                 recurrence=recurrence,
