@@ -1,6 +1,8 @@
 """Pruebas de la lógica independiente de una instancia real de NVDA."""
 
 import builtins
+import base64
+import hashlib
 import importlib.util
 import json
 import logging
@@ -11,6 +13,7 @@ import types
 import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -64,6 +67,8 @@ sys.modules[PACKAGE] = package
 recurrence = _load_module(f"{PACKAGE}.recurrence", "recurrence.py")
 constants = _load_module(f"{PACKAGE}.constants", "constants.py")
 manager_module = _load_module(f"{PACKAGE}.manager", "manager.py")
+calendar_config = _load_module(f"{PACKAGE}.google_calendar_config", "google_calendar_config.py")
+calendar_oauth = _load_module(f"{PACKAGE}.google_calendar", "google_calendar.py")
 
 
 def _manager_at(path):
@@ -144,6 +149,48 @@ class ManagerTests(unittest.TestCase):
             manager._check_due_reminders()
             self.assertEqual(len(manager.reminders), 1)
             self.assertTrue(manager.reminders[0]["pending_review"])
+
+
+class GoogleCalendarOAuthTests(unittest.TestCase):
+    def test_authorization_request_uses_pkce_and_the_public_client_id(self):
+        client = calendar_oauth.GoogleCalendarOAuthClient()
+        authorization = client.create_authorization_request("http://127.0.0.1:8765/callback")
+        query = parse_qs(urlparse(authorization.url).query)
+        self.assertEqual(query["client_id"], [calendar_config.GOOGLE_CALENDAR_CLIENT_ID])
+        self.assertEqual(query["code_challenge_method"], ["S256"])
+        self.assertEqual(query["state"], [authorization.state])
+        expected_challenge = base64.urlsafe_b64encode(
+            hashlib.sha256(authorization.code_verifier.encode("ascii")).digest()
+        ).rstrip(b"=").decode("ascii")
+        self.assertEqual(query["code_challenge"], [expected_challenge])
+
+    def test_state_validation_rejects_a_different_callback(self):
+        with self.assertRaises(calendar_oauth.GoogleCalendarOAuthError):
+            calendar_oauth.GoogleCalendarOAuthClient.validate_state("esperado", "distinto")
+
+    def test_exchange_code_uses_no_client_secret(self):
+        captured = {}
+
+        class Response:
+            def read(self):
+                return b'{"access_token": "access", "refresh_token": "refresh"}'
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        def opener(request, timeout):
+            captured["body"] = request.data.decode("ascii")
+            captured["timeout"] = timeout
+            return Response()
+
+        tokens = calendar_oauth.GoogleCalendarOAuthClient(opener=opener).exchange_code(
+            "code", "http://127.0.0.1:8765/callback", "verifier",
+        )
+        self.assertEqual(tokens["access_token"], "access")
+        self.assertNotIn("client_secret", captured["body"])
 
 
 if __name__ == "__main__":
