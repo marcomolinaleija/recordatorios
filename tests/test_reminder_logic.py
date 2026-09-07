@@ -14,6 +14,7 @@ import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
+from urllib.request import urlopen
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,7 +37,9 @@ def _install_stubs():
     config = types.ModuleType("config")
     config.conf = {"remindersConfig": {"notificationInterval": 1, "numberOfTimesToNotifyReminder": 1}}
     sys.modules["config"] = config
-    sys.modules["globalVars"] = types.ModuleType("globalVars")
+    global_vars = types.ModuleType("globalVars")
+    global_vars.appArgs = types.SimpleNamespace(configPath=tempfile.gettempdir())
+    sys.modules["globalVars"] = global_vars
     sys.modules["gui"] = types.ModuleType("gui")
     tones = types.ModuleType("tones")
     tones.beep = lambda *_args: None
@@ -239,6 +242,41 @@ class GoogleCalendarExportTests(unittest.TestCase):
         exporter.export([reminder], lambda *_args: None)
         self.assertEqual(captured["method"], "PATCH")
         self.assertTrue(captured["url"].endswith("/evento"))
+
+
+class GoogleCalendarAuthorizationTests(unittest.TestCase):
+    def test_loopback_server_accepts_the_google_callback(self):
+        completed = threading.Event()
+        failures = []
+        saved = []
+
+        class Store:
+            def save(self, tokens):
+                saved.append(tokens)
+
+        class OAuth:
+            def create_authorization_request(self, redirect_uri):
+                return types.SimpleNamespace(url=redirect_uri + "?state=expected", state="expected", code_verifier="verifier")
+
+            def validate_state(self, expected, returned):
+                if expected != returned:
+                    raise AssertionError("El estado no coincide")
+
+            def exchange_code(self, code, redirect_uri, verifier):
+                if code != "code" or verifier != "verifier":
+                    raise AssertionError("El retorno OAuth no coincide")
+                return {"access_token": "access", "refresh_token": "refresh"}
+
+        def browser_opener(url):
+            with urlopen(url + "&code=code", timeout=3) as response:
+                response.read()
+            return True
+
+        authorizer = calendar_authorization.GoogleCalendarAuthorizer(Store(), OAuth(), browser_opener)
+        authorizer.start(completed.set, failures.append)
+        self.assertTrue(completed.wait(3))
+        self.assertFalse(failures)
+        self.assertEqual(saved[0]["access_token"], "access")
 
 
 if __name__ == "__main__":
