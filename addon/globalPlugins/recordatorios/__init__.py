@@ -66,6 +66,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         }
         settingsDialogs.NVDASettingsDialog.categoryClasses.append(remindersConfigPanel)
         self.reminder_manager = ReminderManager()
+        remindersConfigPanel.reminder_manager = self.reminder_manager
         self._frame = None
         self._tools_menu_item = None
         self._menu_bindings = []

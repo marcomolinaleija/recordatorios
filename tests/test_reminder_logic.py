@@ -69,6 +69,8 @@ constants = _load_module(f"{PACKAGE}.constants", "constants.py")
 manager_module = _load_module(f"{PACKAGE}.manager", "manager.py")
 calendar_config = _load_module(f"{PACKAGE}.google_calendar_config", "google_calendar_config.py")
 calendar_oauth = _load_module(f"{PACKAGE}.google_calendar", "google_calendar.py")
+calendar_authorization = _load_module(f"{PACKAGE}.google_calendar_authorization", "google_calendar_authorization.py")
+calendar_export = _load_module(f"{PACKAGE}.google_calendar_export", "google_calendar_export.py")
 
 
 def _manager_at(path):
@@ -191,6 +193,52 @@ class GoogleCalendarOAuthTests(unittest.TestCase):
         )
         self.assertEqual(tokens["access_token"], "access")
         self.assertNotIn("client_secret", captured["body"])
+
+
+class GoogleCalendarExportTests(unittest.TestCase):
+    def test_event_contains_the_reminder_and_recurs_daily(self):
+        reminder = manager_module.new_reminder(
+            "Prueba", datetime(2026, 9, 7, 9, 0), recurrence=recurrence.RECURRENCE_DAILY,
+        )
+        event = calendar_export.GoogleCalendarExporter._event_body(reminder)
+        self.assertEqual(event["summary"], "Prueba")
+        self.assertEqual(event["recurrence"], ["RRULE:FREQ=DAILY"])
+        self.assertEqual(event["extendedProperties"]["private"]["recordatoriosId"], reminder["id"])
+
+    def test_existing_google_event_is_updated_not_duplicated(self):
+        captured = {}
+
+        class Response:
+            def read(self):
+                return b'{"id": "evento"}'
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        class Store:
+            def load(self):
+                return {"refresh_token": "refresh"}
+
+            def save(self, _tokens):
+                pass
+
+        class OAuth:
+            def refresh_access_token(self, _token):
+                return {"access_token": "access"}
+
+        def opener(request, timeout):
+            captured["method"] = request.get_method()
+            captured["url"] = request.full_url
+            return Response()
+
+        reminder = manager_module.new_reminder("Prueba", datetime(2026, 9, 7, 9, 0), google_event_id="evento")
+        exporter = calendar_export.GoogleCalendarExporter(Store(), OAuth(), opener)
+        exporter.export([reminder], lambda *_args: None)
+        self.assertEqual(captured["method"], "PATCH")
+        self.assertTrue(captured["url"].endswith("/evento"))
 
 
 if __name__ == "__main__":

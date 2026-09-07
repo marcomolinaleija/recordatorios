@@ -51,12 +51,13 @@ _REMINDER_DEFAULTS = {
     "pre_notification_minutes": None,
     "pre_notified": False,
     "pending_review": False,
+    "google_event_id": None,
 }
 
 
 def new_reminder(message, time, recurrence=None, sound_file=None, custom_interval=None,
                  tasks=None, pre_notification_minutes=None, pre_notified=False,
-                 reminder_id=None, pending_review=False):
+                 reminder_id=None, pending_review=False, google_event_id=None):
     """Construye un recordatorio con los valores por defecto correctos."""
     return {
         "id": reminder_id or str(uuid.uuid4()),
@@ -69,6 +70,7 @@ def new_reminder(message, time, recurrence=None, sound_file=None, custom_interva
         "pre_notification_minutes": pre_notification_minutes,
         "pre_notified": pre_notified,
         "pending_review": pending_review,
+        "google_event_id": google_event_id,
     }
 
 
@@ -364,6 +366,7 @@ class ReminderManager:
             "pre_notification_minutes": reminder["pre_notification_minutes"],
             "pre_notified": reminder["pre_notified"],
             "pending_review": reminder.get("pending_review", False),
+            "google_event_id": reminder.get("google_event_id"),
         }
 
     def _backup_current_file(self, reason):
@@ -466,4 +469,5 @@ class ReminderManager:
             pre_notified=bool(entry.get("pre_notified")),
             reminder_id=reminder_id,
             pending_review=bool(entry.get("pending_review")),
+            google_event_id=entry.get("google_event_id"),
         )
