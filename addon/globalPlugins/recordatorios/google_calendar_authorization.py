@@ -12,6 +12,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlsplit
 
 import globalVars
+from logHandler import log
 
 from .google_calendar import GoogleCalendarOAuthClient, GoogleCalendarOAuthError
 
@@ -102,7 +103,7 @@ class GoogleCalendarAuthorizer:
 		class CallbackHandler(BaseHTTPRequestHandler):
 			def do_GET(self):
 				self.server.callback_query = parse_qs(urlsplit(self.path).query)
-				body = "<html><body><h1>Autorización recibida</h1><p>Ya puedes volver a NVDA.</p></body></html>"
+				body = "<html><body><h1>Autorización recibida</h1><p>Estamos terminando la conexión. Vuelve a NVDA y escucha el resultado.</p></body></html>"
 				self.send_response(200)
 				self.send_header("Content-Type", "text/html; charset=utf-8")
 				self.send_header("Content-Length", str(len(body.encode("utf-8"))))
@@ -126,6 +127,7 @@ class GoogleCalendarAuthorizer:
 			self.token_store.save(tokens)
 			on_success()
 		except Exception as error:
+			log.exception("No se pudo completar la autorización con Google Calendar.")
 			on_error(error)
 		finally:
 			server.server_close()

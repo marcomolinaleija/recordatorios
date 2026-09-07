@@ -11,7 +11,9 @@ import threading
 import addonHandler
 import config
 import gui
+import ui
 from gui import settingsDialogs
+from logHandler import log
 
 from ..google_calendar_authorization import GoogleCalendarAuthorizer, GoogleCalendarTokenStore
 from ..google_calendar_export import GoogleCalendarExporter
@@ -54,6 +56,7 @@ class remindersConfigPanel(settingsDialogs.SettingsPanel):
 
     def _connect_google_calendar(self, event):
         self.google_connect.Disable()
+        ui.message(_("Abriendo Google Calendar para autorizar la conexión."))
         authorizer = GoogleCalendarAuthorizer()
         try:
             authorizer.start(self._google_connected, self._google_connection_failed)
@@ -69,6 +72,7 @@ class remindersConfigPanel(settingsDialogs.SettingsPanel):
     def _finish_google_connection(self, message):
         self.google_status.SetLabel(message)
         self.google_connect.Enable()
+        ui.message(message)
 
     def _export_google_calendar(self, event):
         manager = getattr(type(self), "reminder_manager", None)
@@ -76,6 +80,7 @@ class remindersConfigPanel(settingsDialogs.SettingsPanel):
             self._finish_google_export(_("No se pudo acceder a los recordatorios para exportarlos."))
             return
         self.google_export.Disable()
+        ui.message(_("Exportando recordatorios a Google Calendar."))
         threading.Thread(target=self._export_in_background, args=(manager,), daemon=True).start()
 
     def _export_in_background(self, manager):
@@ -84,12 +89,14 @@ class remindersConfigPanel(settingsDialogs.SettingsPanel):
             GoogleCalendarExporter().export(reminders, lambda reminder_id, event_id: manager.update_reminder(reminder_id, google_event_id=event_id))
             message = _("Se exportaron {} recordatorios a Google Calendar.").format(len(reminders))
         except Exception as error:
+            log.exception("No se pudieron exportar los recordatorios a Google Calendar.")
             message = _("No se pudieron exportar los recordatorios: {}").format(error)
         wx.CallAfter(self._finish_google_export, message)
 
     def _finish_google_export(self, message):
         self.google_status.SetLabel(message)
         self.google_export.Enable()
+        ui.message(message)
 
     def onSave(self):
         config.conf["remindersConfig"]["numberOfTimesToNotifyReminder"] = int(

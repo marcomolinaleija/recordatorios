@@ -15,6 +15,7 @@ import hmac
 import json
 import secrets
 from dataclasses import dataclass
+from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -113,6 +114,13 @@ class GoogleCalendarOAuthClient:
         try:
             with self._opener(request, timeout=15) as response:
                 payload = json.loads(response.read().decode("utf-8"))
+        except HTTPError as error:
+            try:
+                payload = json.loads(error.read().decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                payload = {}
+            detail = payload.get("error_description", payload.get("error", str(error.code)))
+            raise GoogleCalendarOAuthError("Google rechazó la autorización: {}".format(detail)) from error
         except Exception as error:
             raise GoogleCalendarOAuthError("No se pudo contactar el servicio de autorización de Google.") from error
         if not isinstance(payload, dict) or payload.get("error"):
