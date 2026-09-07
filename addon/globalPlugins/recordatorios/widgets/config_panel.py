@@ -15,6 +15,7 @@ import ui
 from gui import settingsDialogs
 from logHandler import log
 
+from ..google_calendar import GoogleCalendarOAuthClient
 from ..google_calendar_authorization import GoogleCalendarAuthorizer, GoogleCalendarTokenStore
 from ..google_calendar_export import GoogleCalendarExporter
 
@@ -48,6 +49,8 @@ class remindersConfigPanel(settingsDialogs.SettingsPanel):
         self.google_status = helper.addItem(wx.StaticText(self, label=self._google_status_text()))
         self.google_connect = helper.addItem(wx.Button(self, label=_("Conectar con Google Calendar")))
         self.google_connect.Bind(wx.EVT_BUTTON, self._connect_google_calendar)
+        self.google_disconnect = helper.addItem(wx.Button(self, label=_("Desconectar Google Calendar")))
+        self.google_disconnect.Bind(wx.EVT_BUTTON, self._disconnect_google_calendar)
         self.google_export = helper.addItem(wx.Button(self, label=_("Exportar recordatorios ahora")))
         self.google_export.Bind(wx.EVT_BUTTON, self._export_google_calendar)
 
@@ -72,6 +75,35 @@ class remindersConfigPanel(settingsDialogs.SettingsPanel):
     def _finish_google_connection(self, message):
         self.google_status.SetLabel(message)
         self.google_connect.Enable()
+        ui.message(message)
+
+    def _disconnect_google_calendar(self, event):
+        token_store = GoogleCalendarTokenStore()
+        tokens = token_store.load()
+        if not tokens:
+            self._finish_google_connection(_("Google Calendar no está conectado."))
+            return
+        self.google_disconnect.Disable()
+        ui.message(_("Desconectando Google Calendar."))
+        threading.Thread(
+            target=self._disconnect_google_in_background,
+            args=(token_store, tokens.get("refresh_token")),
+            daemon=True,
+        ).start()
+
+    def _disconnect_google_in_background(self, token_store, refresh_token):
+        try:
+            GoogleCalendarOAuthClient().revoke_token(refresh_token)
+            token_store.delete()
+            message = _("Google Calendar se desconectó y la autorización fue revocada.")
+        except Exception as error:
+            log.exception("No se pudo desconectar Google Calendar.")
+            message = _("No se pudo desconectar Google Calendar: {}").format(error)
+        wx.CallAfter(self._finish_google_disconnection, message)
+
+    def _finish_google_disconnection(self, message):
+        self.google_status.SetLabel(message)
+        self.google_disconnect.Enable()
         ui.message(message)
 
     def _export_google_calendar(self, event):

@@ -71,6 +71,7 @@ recurrence = _load_module(f"{PACKAGE}.recurrence", "recurrence.py")
 constants = _load_module(f"{PACKAGE}.constants", "constants.py")
 manager_module = _load_module(f"{PACKAGE}.manager", "manager.py")
 calendar_config = _load_module(f"{PACKAGE}.google_calendar_config", "google_calendar_config.py")
+calendar_credentials = _load_module(f"{PACKAGE}.google_calendar_credentials", "google_calendar_credentials.py")
 calendar_oauth = _load_module(f"{PACKAGE}.google_calendar", "google_calendar.py")
 calendar_authorization = _load_module(f"{PACKAGE}.google_calendar_authorization", "google_calendar_authorization.py")
 calendar_export = _load_module(f"{PACKAGE}.google_calendar_export", "google_calendar_export.py")
@@ -162,6 +163,7 @@ class GoogleCalendarOAuthTests(unittest.TestCase):
         authorization = client.create_authorization_request("http://127.0.0.1:8765/callback")
         query = parse_qs(urlparse(authorization.url).query)
         self.assertEqual(query["client_id"], [calendar_config.GOOGLE_CALENDAR_CLIENT_ID])
+        self.assertEqual(query["scope"], ["https://www.googleapis.com/auth/calendar.events.owned"])
         self.assertEqual(query["code_challenge_method"], ["S256"])
         self.assertEqual(query["state"], [authorization.state])
         expected_challenge = base64.urlsafe_b64encode(
@@ -173,7 +175,7 @@ class GoogleCalendarOAuthTests(unittest.TestCase):
         with self.assertRaises(calendar_oauth.GoogleCalendarOAuthError):
             calendar_oauth.GoogleCalendarOAuthClient.validate_state("esperado", "distinto")
 
-    def test_exchange_code_uses_no_client_secret(self):
+    def test_exchange_code_uses_the_private_desktop_client_secret(self):
         captured = {}
 
         class Response:
@@ -191,11 +193,30 @@ class GoogleCalendarOAuthTests(unittest.TestCase):
             captured["timeout"] = timeout
             return Response()
 
-        tokens = calendar_oauth.GoogleCalendarOAuthClient(opener=opener).exchange_code(
+        tokens = calendar_oauth.GoogleCalendarOAuthClient(client_secret="prueba", opener=opener).exchange_code(
             "code", "http://127.0.0.1:8765/callback", "verifier",
         )
         self.assertEqual(tokens["access_token"], "access")
-        self.assertNotIn("client_secret", captured["body"])
+        self.assertIn("client_secret=prueba", captured["body"])
+
+    def test_revoking_a_token_uses_the_google_revocation_endpoint(self):
+        captured = {}
+
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        def opener(request, timeout):
+            captured["url"] = request.full_url
+            captured["body"] = request.data.decode("ascii")
+            return Response()
+
+        calendar_oauth.GoogleCalendarOAuthClient(opener=opener).revoke_token("refresh")
+        self.assertEqual(captured["url"], calendar_oauth.REVOCATION_ENDPOINT)
+        self.assertEqual(captured["body"], "token=refresh")
 
 
 class GoogleCalendarExportTests(unittest.TestCase):

@@ -20,11 +20,13 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from .google_calendar_config import GOOGLE_CALENDAR_CLIENT_ID
+from .google_calendar_credentials import GoogleCalendarClientSecretStore
 
 
 AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
-DEFAULT_SCOPES = ("https://www.googleapis.com/auth/calendar.events",)
+REVOCATION_ENDPOINT = "https://oauth2.googleapis.com/revoke"
+DEFAULT_SCOPES = ("https://www.googleapis.com/auth/calendar.events.owned",)
 
 
 class GoogleCalendarOAuthError(RuntimeError):
@@ -41,10 +43,12 @@ class AuthorizationRequest:
 
 
 class GoogleCalendarOAuthClient:
-    """Crea solicitudes PKCE y canjea códigos sin usar un secreto de cliente."""
+    """Crea solicitudes PKCE y canjea códigos del cliente de escritorio."""
 
-    def __init__(self, client_id=GOOGLE_CALENDAR_CLIENT_ID, opener=urlopen):
+    def __init__(self, client_id=GOOGLE_CALENDAR_CLIENT_ID, client_secret=None, credential_store=None, opener=urlopen):
         self.client_id = client_id
+        self.client_secret = client_secret
+        self.credential_store = credential_store or GoogleCalendarClientSecretStore()
         self._opener = opener
 
     def create_authorization_request(self, redirect_uri, scopes=DEFAULT_SCOPES):
@@ -88,6 +92,7 @@ class GoogleCalendarOAuthClient:
             raise ValueError("Google no devolvió un código de autorización.")
         return self._request_token({
             "client_id": self.client_id,
+            "client_secret": self._client_secret(),
             "code": code,
             "code_verifier": code_verifier,
             "grant_type": "authorization_code",
@@ -100,9 +105,35 @@ class GoogleCalendarOAuthClient:
             raise ValueError("No hay token de actualización disponible.")
         return self._request_token({
             "client_id": self.client_id,
+            "client_secret": self._client_secret(),
             "refresh_token": refresh_token,
             "grant_type": "refresh_token",
         })
+
+    def _client_secret(self):
+        secret = self.client_secret or self.credential_store.load()
+        if not secret:
+            raise GoogleCalendarOAuthError(
+                "Falta la credencial privada de Google Calendar en el perfil de NVDA."
+            )
+        return secret
+
+    def revoke_token(self, token):
+        """Revoca el token remoto antes de borrar su copia local."""
+        if not token:
+            raise ValueError("No hay token para revocar.")
+        request = Request(
+            REVOCATION_ENDPOINT,
+            data=urlencode({"token": token}).encode("ascii"),
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        try:
+            with self._opener(request, timeout=15):
+                pass
+        except HTTPError as error:
+            raise GoogleCalendarOAuthError("Google no pudo revocar la autorización: {}".format(error.code)) from error
+        except Exception as error:
+            raise GoogleCalendarOAuthError("No se pudo contactar el servicio de autorización de Google.") from error
 
     def _request_token(self, parameters):
         body = urlencode(parameters).encode("ascii")

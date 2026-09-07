@@ -65,6 +65,7 @@ pythonSources = [
     'addon/globalPlugins/recordatorios/manager.py',
     'addon/globalPlugins/recordatorios/google_calendar.py',
     'addon/globalPlugins/recordatorios/google_calendar_config.py',
+    'addon/globalPlugins/recordatorios/google_calendar_credentials.py',
     'addon/globalPlugins/recordatorios/google_calendar_authorization.py',
     'addon/globalPlugins/recordatorios/google_calendar_export.py',
     'addon/globalPlugins/recordatorios/widgets/__init__.py',
